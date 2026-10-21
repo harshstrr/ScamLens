@@ -1,0 +1,37 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>ScamLens · Privacy &amp; settings</title>
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="options.css">
+</head>
+<body>
+<div class="wrap">
+  <header><a class="brand" href="results.html"><span data-icon="shield-check" data-size="22"></span>ScamLens</a></header>
+  <h1>Privacy &amp; settings</h1>
+
+  <section class="card">
+    <h2>What gets sent</h2>
+    <p>ScamLens reads a page only when you press <em>Analyze</em> or use the right-click menu. The page address, title, readable text and up to 60 links (or the text you selected or pasted) are sent over HTTPS to the analysis service to produce the report. Nothing is scanned in the background.</p>
+  </section>
+
+  <section class="card">
+    <h2>Appearance</h2>
+    <label for="theme">Theme</label>
+    <select id="theme"><option value="">Follow system</option><option value="light">Light</option><option value="dark">Dark</option></select>
+  </section>
+
+  <section class="card">
+    <h2>Analysis service</h2>
+    <label for="api">API endpoint</label>
+    <input id="api" type="url" placeholder="https://api.example.com/v1/analyze" spellcheck="false" autocomplete="off">
+    <p class="help" id="api-help">Leave empty to use the built-in on-device check, which is less thorough.</p>
+    <div class="row"><button id="save" class="btn primary">Save</button><button id="reset" class="btn">Reset</button></div>
+    <p id="status" class="status" role="status"></p>
+  </section>
+</div>
+<script type="module" src="options.js"></script>
+</body>
+</html>

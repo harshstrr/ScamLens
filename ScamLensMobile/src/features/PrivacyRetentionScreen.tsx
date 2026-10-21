@@ -73,12 +73,12 @@ export default function PrivacyRetentionScreen() {
             Automatically delete local scans
           </Text>
           <View className="flex-row bg-[#F2F2F7] p-1 rounded-2xl mb-3">
-            {(["7 days", "30 days", "Never"] as RetentionOption[]).map((opt) => {
+            {["7 days", "30 days", "Never"].map((opt) => {
               const active = retention === opt;
               return (
                 <Pressable
                   key={opt}
-                  onPress={() => setRetention(opt)}
+                  onPress={() => setRetention(opt as RetentionOption)}
                   // NativeWind Fix: Split completely into separate static conditional strings
                   className={
                     active

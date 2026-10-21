@@ -19,10 +19,7 @@ import {
 } from "lucide-react-native";
 import { router } from "expo-router";
 import GoogleIcon from "../../assets/Google.svg";
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 const onboardingData = [
   {
@@ -71,7 +68,8 @@ export default function OnboardingScreen() {
 
   useEffect(() => {
     GoogleSignin.configure({
-      webClientId: "704781607192-o6mi7d8rc87tisus3c6ff3bgme5en8h4.apps.googleusercontent.com",
+      webClientId: "704781607192-hjpi53ujt8q1k2oppu7hcqcaaftu7ri3.apps.googleusercontent.com",
+      
     });
   }, []);
 
@@ -81,14 +79,14 @@ export default function OnboardingScreen() {
     try {
       setIsSigningIn(true);
       await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true,
+        showPlayServicesUpdateDialog: true, 
       });
 
       const response = await GoogleSignin.signIn();
 
       console.log("Google SignIn Response:", response);
       // Navigate to your main application screen
-      // router.replace("/tabs/home");
+      router.replace("/tabs/home");
     } catch (error: any) {
       console.error(error);
     } finally {

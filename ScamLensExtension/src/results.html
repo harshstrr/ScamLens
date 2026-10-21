@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ScamLens · Full report</title>
+  <link rel="icon" href="../assets/icon-48.png">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="results.css">
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <a class="brand" href="#" aria-label="ScamLens"><span data-icon="shield-check" data-size="22"></span>ScamLens</a>
+    <a class="settings-link" href="options.html">Privacy &amp; settings <span data-icon="sliders" data-size="15"></span></a>
+  </header>
+
+  <!-- Loading: skeleton that mirrors the report layout -->
+  <main id="loading" class="skel" aria-busy="true" aria-live="polite">
+    <p class="sr-only" style="position:absolute;left:-9999px">Analyzing, please wait…</p>
+    <div class="meta" style="margin-top:34px"><span class="sk" style="width:210px;height:10px"></span><span class="sk" style="width:110px;height:10px"></span></div>
+    <div class="head"><div style="flex:1"><span class="sk" style="width:min(380px,80%);height:32px"></span><span class="sk" style="width:min(260px,60%);height:12px;margin-top:12px"></span></div><span class="sk" style="width:96px;height:14px;margin-top:8px"></span></div>
+    <div class="card" style="margin-top:22px;padding:20px 22px;border-radius:14px"><span class="sk" style="width:55%;height:16px"></span><span class="sk" style="width:90%;height:11px"></span><span class="sk" style="width:70%;height:11px"></span></div>
+    <div class="columns">
+      <div>
+        <span class="sk" style="width:230px;height:20px"></span><span class="sk" style="width:60%;height:10px;margin:10px 0 16px"></span>
+        <div class="stack">
+          <div class="card"><span class="sk" style="width:170px;height:12px"></span><span class="sk" style="width:120px;height:14px"></span><span class="sk" style="width:85%;height:10px"></span></div>
+          <div class="card"><span class="sk" style="width:150px;height:12px"></span><span class="sk" style="width:140px;height:14px"></span><span class="sk" style="width:80%;height:10px"></span></div>
+          <div class="card"><span class="sk" style="width:180px;height:12px"></span><span class="sk" style="width:110px;height:14px"></span><span class="sk" style="width:75%;height:10px"></span></div>
+        </div>
+      </div>
+      <div class="side">
+        <span class="sk" style="width:150px;height:20px"></span>
+        <div class="card"><span class="sk" style="width:60%;height:12px"></span><span class="sk" style="width:80%;height:11px"></span><span class="sk" style="width:70%;height:11px"></span></div>
+        <div class="card"><span class="sk" style="width:50%;height:12px"></span><span class="sk" style="width:95%;height:11px"></span><span class="sk" style="width:85%;height:11px"></span><span class="sk" style="width:90%;height:11px"></span></div>
+        <span class="sk" style="width:100%;height:40px;border-radius:10px"></span>
+      </div>
+    </div>
+  </main>
+
+  <!-- Error / empty -->
+  <main id="state" class="state" hidden>
+    <span class="glyph" id="state-icon"></span>
+    <h2 id="state-title"></h2>
+    <p id="state-text"></p>
+    <div class="row">
+      <button id="retry" class="btn primary" hidden><span data-icon="refresh-cw" data-size="14"></span>Try again</button>
+      <button id="use-local" class="btn" hidden>Run basic on-device check</button>
+    </div>
+  </main>
+
+  <!-- Report -->
+  <main id="report" hidden>
+    <div class="meta"><span id="eyebrow"></span><time id="date"></time></div>
+    <div class="head">
+      <div><h1 id="title"></h1><p id="url" class="url mono" hidden></p></div>
+      <span id="badge-slot"></span>
+    </div>
+    <section class="notice"><h2 id="notice-title"></h2><p id="notice-text"></p></section>
+
+    <div class="columns">
+      <section>
+        <h2 class="section-title">Why we're flagging this</h2>
+        <p class="hint" id="hint">Exact page text below. Explanations are interpretations, not verified threat intelligence.</p>
+        <div id="findings" class="stack"></div>
+        <div id="url-card" class="card" style="margin-top:12px" hidden>
+          <p class="label">URL structure · factual observations</p>
+          <div id="url-line" class="url-line"></div>
+          <div id="url-notes" class="url-notes"></div>
+        </div>
+      </section>
+
+      <aside class="side">
+        <h2 class="section-title">Before you act</h2>
+        <div id="domain-card" class="card domain" hidden></div>
+        <div class="card actions"><h3>What should you do?</h3><ol id="actions"></ol></div>
+        <button id="copy" class="btn primary">Copy report</button>
+        <button id="flag" class="btn">Report incorrect result</button>
+        <p class="fine"><span data-icon="info" data-size="13"></span><span id="disclaimer"></span></p>
+      </aside>
+    </div>
+  </main>
+</div>
+<script type="module" src="results.js"></script>
+</body>
+</html>
