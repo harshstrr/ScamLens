@@ -1,3 +1,4 @@
+import { signIn, signOut } from "./auth.js";
 import { scanTab, isScannable, payloadFromText } from "./collect.js";
 
 const SELECTION = "scamlens-selection";
@@ -27,5 +28,22 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
     }
   } catch (e) {
     console.error("ScamLens scan failed", e);
+  }
+});
+
+// Sign-in runs here (not in the popup, which closes when Google's window takes focus).
+chrome.runtime.onMessage.addListener((msg, sender, send) => {
+  if (sender.id !== chrome.runtime.id) return;
+  if (msg?.type === "auth:signIn") {
+    const keepAlive = setInterval(() => chrome.runtime.getPlatformInfo(), 20000); // stop the worker sleeping mid-login
+    signIn()
+      .then((user) => send({ ok: true, user }))
+      .catch((e) => send({ ok: false, error: e.message || "Sign-in failed." }))
+      .finally(() => clearInterval(keepAlive));
+    return true;
+  }
+  if (msg?.type === "auth:signOut") {
+    signOut().then(() => send({ ok: true }));
+    return true;
   }
 });

@@ -1,55 +1,59 @@
 # ScamLens Extension — Chrome & Edge (MV3)
 
-Vanilla JS, no build step.
+Vanilla JavaScript, no build step.
 
 ## Install for development
-1. Unzip, open `chrome://extensions` (Edge: `edge://extensions`), enable **Developer mode**.
-2. **Load unpacked** → choose the folder containing `manifest.json`. Pin ScamLens.
+1. Open `chrome://extensions` (Edge: `edge://extensions`) and enable **Developer mode**.
+2. Choose **Load unpacked**, select the folder containing `manifest.json`, and pin ScamLens.
 
-Public one-click install requires publishing to the Chrome Web Store / Edge Add-ons.
+Public one-click installation requires publishing to the Chrome Web Store or Edge Add-ons.
 
 ## How it works
-- **Popup** – analyze the current page, selected text, or a pasted link/message. A skeleton shows while the API responds.
-- **Right-click menu** – scan the page or the selection; opens the full report, which shows its skeleton until the result arrives.
-- **Full report** (`src/results.html`) – verdict, evidence quotes, URL structure, domain checks, next steps, *Copy report*, *Report incorrect result*.
-- **Privacy & settings** (`src/options.html`) – theme and API endpoint.
-- Nothing is scanned in the background. Light/dark follow the system or the saved toggle.
+- **Popup** – analyze the current page, selected text, or a pasted link/message.
+- **Right-click menu** – scan the page or selection and open the full report.
+- **Full report** (`src/results.html`) – review findings and recommendations, copy the report, or send feedback.
+- **Privacy & settings** (`src/options.html`) – manage the account and theme.
+- Nothing is scanned in the background. Light/dark mode follows the system or the saved toggle.
 
-## Connecting your API
-Set `API_URL` in `src/config.js` (and add its origin to `host_permissions` in `manifest.json`),
-or let users enter it on the Settings page (the browser asks for permission for that origin only).
-With no endpoint, the extension uses a basic on-device check (never returns "safe").
-**Never put API secrets in the extension** — authenticate on your server.
+## ScamLens API
+The API base URL is configured in `src/config.js`; add its origin to `host_permissions` in `manifest.json`.
+If no analysis endpoint is configured, scans use the basic on-device analyzer.
 
-**Request** `POST <API_URL>` (JSON)
-```json
-{ "kind": "website | message | url", "url": "https://…", "page_url": "…", "title": "…",
-  "text": "visible text (≤20k chars)", "links": [{ "text": "…", "url": "…" }],
-  "client": { "name": "scamlens-extension", "version": "0.3.0" } }
-```
+The extension calls `POST /api/v1/scans/analyze` with `source_type`, `text`, and optional `source_url` and
+`source_title`. Guest scans set `save_to_history: false`. Signed-in scans set `save_to_history: true` and
+`save_content: false`, so the API stores the result but not the scanned page or message text. API responses are
+normalized for the UI in `src/normalize.js`. Optional `FEEDBACK_URL` receives only the verdict and address, not page text.
 
-**Response** (all fields optional except a verdict; camelCase also accepted)
-```json
-{
-  "verdict": "scam | high | medium | low | safe | unknown",
-  "title": "Delivery payment request",
-  "headline": "This page has warning signs, not a confirmed threat verdict.",
-  "summary": "Urgent payment language … External reputation is unavailable.",
-  "findings": [
-    { "category": "Pressure to act quickly", "quote": "within 2 hours",
-      "explanation": "A short deadline can rush you …", "severity": "low | medium | high" }
-  ],
-  "url_notes": ["No URL shortener or embedded username observed."],
-  "domain": { "host": "parcel-help.example",
-    "checks": [{ "text": "HTTPS present - connection encrypted", "note": "HTTPS does not verify who runs this site.", "status": "ok | warn | bad | neutral" }] },
-  "actions": ["Don't enter card details through this link.", "…"],
-  "disclaimer": "…", "report_id": "abc123", "analyzed_at": "2026-10-18T09:24:00Z"
-}
-```
-`verdict` also accepts `is_scam: true/false` or a `risk_score` (0–1 or 0–100). Missing parts get sensible defaults
-(`src/normalize.js`). Optional `FEEDBACK_URL` receives *Report incorrect result* (verdict + address only, no page text).
+## Google sign-in
+Sign-in uses `chrome.identity.launchWebAuthFlow` to obtain a Google ID token, then exchanges it with
+`POST /api/v1/auth/google` for a ScamLens API access token and refresh secret. Expired access tokens are refreshed
+through `POST /api/v1/auth/refresh`. Tokens are kept in `chrome.storage.local`; authentication runs in the background
+worker because the popup closes when Google's window opens.
 
-## Files
-`background.js` context menus · `collect.js` page/selection reading · `api.js` request, timeout, errors ·
-`normalize.js` API → UI shape · `analyzer.js` on-device fallback · `url.js` URL facts · `icons.js` all icons
-(shield-check = logo, also `assets/shield-check.svg`) · `theme.css` shared tokens · `popup.*` `results.*` `options.*`
+1. In Google Cloud, create an **OAuth client ID** for a web application. Add the extension redirect URI
+   `https://dflegigijeolhcafocojenplplcjdjba.chromiumapp.org/` (the ID pinned by the `key` in `manifest.json`) and
+   set the client ID in `GOOGLE_CLIENT_ID` in `src/config.js`.
+2. Configure the same client ID on the ScamLens API so it can verify Google ID tokens.
+3. Before publishing to the Chrome Web Store, remove `key` from the manifest and add the store-assigned extension
+   redirect URI to the OAuth client. Edge Add-ons also receives a separate extension ID and redirect URI.
+4. Publishing an extension with accounts requires a privacy-policy URL in the store listing.
+
+## Scan history
+`src/history.html` (`history.js` and `history-store.js`) is opened from the popup, report page, or any ScamLens tab.
+History supports search, filters, opening reports, deleting individual scans, and clearing all scans.
+
+- **Signed out**: scan results are saved in `chrome.storage.local` on this device, up to the newest 200. Scanned text
+  is not stored in the history entry.
+- **Signed in**: the result is saved to the account by `POST /api/v1/scans/analyze` and history is loaded from
+  `GET /api/v1/scans?page=1&page_size=30`. Signed-in scans are not copied to local history.
+- Scans made while signed out are not uploaded when the user later signs in.
+
+The API uses bearer access tokens for account history. It supports `GET /api/v1/scans/{id}` and
+`DELETE /api/v1/scans/{id}`. Clear all sends `DELETE /api/v1/scans` with no query parameters; the API deletes all
+scans belonging to the signed-in account.
+
+## Source files
+`background.js` handles context menus · `collect.js` reads page/selection text · `api.js` sends analysis and feedback ·
+`auth.js` handles Google/API sign-in · `account.js` renders the account widget · `history-store.js` manages local and
+account history · `normalize.js` maps API results to the UI · `analyzer.js` provides on-device analysis ·
+`url.js` handles URL checks · `icons.js` contains icons · `theme.css` provides shared theme tokens.

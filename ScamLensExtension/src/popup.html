@@ -1,5 +1,6 @@
 <!doctype html>
 <html lang="en">
+
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -7,56 +8,73 @@
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="popup.css">
 </head>
+
 <body>
-<main id="app">
-  <header>
-    <span class="brand"><span data-icon="shield-check" data-size="20"></span>ScamLens</span>
-    <button id="theme" class="icon-btn" aria-label="Toggle theme" title="Toggle theme"><span data-icon="moon" data-size="16"></span></button>
-  </header>
+  <main id="app">
+    <header>
+      <span class="brand"><span data-icon="shield-check" data-size="20"></span>ScamLens</span>
+      <div class="header-actions">
+        <button id="history" class="history-btn"><span data-icon="history" data-size="14"></span>History</button>
+        <button id="theme" class="icon-btn" aria-label="Toggle theme" title="Toggle theme"><span data-icon="moon"
+            data-size="16"></span></button>
+      </div>
+    </header>
 
-  <!-- Home -->
-  <section id="home">
-    <div class="domain-row"><span id="domain" class="mono">Checking current tab…</span><span id="risk-slot"></span></div>
-    <p id="preview" class="lead">Scan the readable text and links on this page for possible scam signals.</p>
-    <p id="error" class="error" role="alert" hidden></p>
-    <button id="scan-page" class="btn primary"><span data-icon="scan-text" data-size="15"></span>Analyze this page</button>
-    <button id="scan-selection" class="btn quiet"><span data-icon="text-select" data-size="15"></span>Analyze selected text</button>
-    <div class="input-wrap">
-      <input id="manual-text" type="text" maxlength="4000" placeholder="Paste a link or message…" aria-label="Paste a link or message">
-      <button id="scan-manual" aria-label="Analyze pasted text"><span data-icon="arrow-right" data-size="15"></span></button>
-    </div>
-    <ul id="signals" class="signals">
-      <li>Warning signs will appear here after a scan</li>
-      <li>Page text is read only when you scan</li>
-      <li>Results are an assessment, not proof</li>
-    </ul>
-    <button id="report" class="link-row" hidden>View full report <span data-icon="arrow-up-right" data-size="14"></span></button>
-    <p class="footnote"><span data-icon="lock" data-size="11"></span>Nothing is scanned in the background.</p>
-  </section>
+    <!-- Home -->
+    <section id="home">
+      <div class="domain-row"><span id="domain" class="mono">Checking current tab…</span><span id="risk-slot"></span>
+      </div>
+      <p id="preview" class="lead">Scan the readable text and links on this page for possible scam signals.</p>
+      <p id="error" class="error" role="alert" hidden></p>
+      <button id="scan-page" class="btn primary" ><span data-icon="scan-text" data-size="15"></span>Analyze this
+        page</button>
+      <button id="scan-selection" class="btn quiet"><span data-icon="text-select" data-size="15"></span>Analyze selected
+        text</button>
+      <div class="input-wrap">
+        <input id="manual-text" type="text" maxlength="4000" placeholder="Paste a link or message…"
+          aria-label="Paste a link or message">
+        <button id="scan-manual" aria-label="Analyze pasted text"><span data-icon="arrow-right"
+            data-size="15"></span></button>
+      </div>
+      <ul id="signals" class="signals">
+        <li>Warning signs will appear here after a scan</li>
+        <li>Page text is read only when you scan</li>
+        <li>Results are an assessment, not proof</li>
+      </ul>
+      <div id="account" class="account"></div>
+      <button id="report" class="link-row" hidden>View full report <span data-icon="arrow-up-right"
+          data-size="14"></span></button>
+      <p class="footnote"><span data-icon="lock" data-size="11"></span>Nothing is scanned in the background.</p>
+    </section>
 
-  <!-- Loading skeleton -->
-  <section id="loading" hidden aria-live="polite" aria-busy="true">
-    <div class="domain-row"><span class="sk" style="width:120px;height:10px"></span><span class="sk" style="width:70px;height:10px"></span></div>
-    <h1 id="loading-title">Checking this page</h1>
-    <p id="loading-sub" class="lead">Reading the text and links, then checking for warning signs.</p>
-    <div class="sk-block">
-      <div class="sk-card"><span class="sk" style="width:55%;height:11px"></span><span class="sk" style="width:35%;height:13px"></span><span class="sk" style="width:85%;height:9px"></span></div>
-      <div class="sk-card"><span class="sk" style="width:48%;height:11px"></span><span class="sk" style="width:40%;height:13px"></span><span class="sk" style="width:78%;height:9px"></span></div>
-    </div>
-    <button id="cancel" class="btn">Cancel</button>
-  </section>
+    <!-- Loading skeleton -->
+    <section id="loading" hidden aria-live="polite" aria-busy="true">
+      <div class="domain-row"><span class="sk" style="width:120px;height:10px"></span><span class="sk"
+          style="width:70px;height:10px"></span></div>
+      <h1 id="loading-title">Checking this page</h1>
+      <p id="loading-sub" class="lead">Reading the text and links, then checking for warning signs.</p>
+      <div class="sk-block">
+        <div class="sk-card"><span class="sk" style="width:55%;height:11px"></span><span class="sk"
+            style="width:35%;height:13px"></span><span class="sk" style="width:85%;height:9px"></span></div>
+        <div class="sk-card"><span class="sk" style="width:48%;height:11px"></span><span class="sk"
+            style="width:40%;height:13px"></span><span class="sk" style="width:78%;height:9px"></span></div>
+      </div>
+      <button id="cancel" class="btn">Cancel</button>
+    </section>
 
-  <!-- Done -->
-  <section id="done" hidden aria-live="polite">
-    <div class="domain-row"><span id="done-domain" class="mono"></span><span id="done-risk"></span></div>
-    <h1 id="done-title"></h1>
-    <p id="done-summary" class="lead"></p>
-    <ul id="done-signals" class="signals"></ul>
-    <button id="full-report" class="btn primary">View full report <span data-icon="arrow-up-right" data-size="15"></span></button>
-    <button id="rescan" class="btn quiet">Scan again</button>
-    <button id="back" class="btn quiet">Back</button>
-  </section>
-</main>
-<script type="module" src="popup.js"></script>
+    <!-- Done -->
+    <section id="done" hidden aria-live="polite">
+      <div class="domain-row"><span id="done-domain" class="mono"></span><span id="done-risk"></span></div>
+      <h1 id="done-title"></h1>
+      <p id="done-summary" class="lead"></p>
+      <ul id="done-signals" class="signals"></ul>
+      <button id="full-report" class="btn primary">View full report <span data-icon="arrow-up-right"
+          data-size="15"></span></button>
+      <button id="rescan" class="btn quiet">Scan again</button>
+      <button id="back" class="btn quiet">Back</button>
+    </section>
+  </main>
+  <script type="module" src="popup.js"></script>
 </body>
+
 </html>

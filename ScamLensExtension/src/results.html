@@ -13,7 +13,10 @@
 <div class="page">
   <header class="topbar">
     <a class="brand" href="#" aria-label="ScamLens"><span data-icon="shield-check" data-size="22"></span>ScamLens</a>
-    <a class="settings-link" href="options.html">Privacy &amp; settings <span data-icon="sliders" data-size="15"></span></a>
+    <nav class="nav">
+      <a class="settings-link" href="history.html">History</a>
+      <a class="settings-link" href="options.html">Privacy &amp; settings <span data-icon="sliders" data-size="15"></span></a>
+    </nav>
   </header>
 
   <!-- Loading: skeleton that mirrors the report layout -->
@@ -46,6 +49,7 @@
     <h2 id="state-title"></h2>
     <p id="state-text"></p>
     <div class="row">
+      <button id="sign-in" class="btn primary" hidden><span data-icon="log-in" data-size="14"></span>Continue with Google</button>
       <button id="retry" class="btn primary" hidden><span data-icon="refresh-cw" data-size="14"></span>Try again</button>
       <button id="use-local" class="btn" hidden>Run basic on-device check</button>
     </div>

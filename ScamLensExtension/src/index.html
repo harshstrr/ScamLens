@@ -1,0 +1,261 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ScamLens — Check before you click, pay or reply</title>
+  <meta name="description" content="ScamLens is a browser extension that reads a page, message or link and shows the exact warning signs it found, with clear next steps. An assessment, not a verdict.">
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23141414' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z'/%3E%3Cpath d='m9 12 2 2 4-4'/%3E%3C/svg%3E">
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<!-- Reusable shield-check mark (Lucide, ISC licence) -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  <symbol id="quote" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M16 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/><path d="M5 3a2 2 0 0 0-2 2v6a2 2 0 0 0 2 2 1 1 0 0 1 1 1v1a2 2 0 0 1-2 2 1 1 0 0 0-1 1v2a1 1 0 0 0 1 1 6 6 0 0 0 6-6V5a2 2 0 0 0-2-2z"/></symbol>
+  <symbol id="alert" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3"/><path d="M12 9v4"/><path d="M12 17h.01"/></symbol>
+  <symbol id="scan" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M7 8h8"/><path d="M7 12h10"/><path d="M7 16h6"/></symbol>
+  <symbol id="list" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h.01"/><path d="M3 12h.01"/><path d="M3 19h.01"/><path d="M8 5h13"/><path d="M8 12h13"/><path d="M8 19h13"/></symbol>
+  <symbol id="route" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="19" r="3"/><path d="M9 19h8.5a3.5 3.5 0 0 0 0-7h-11a3.5 3.5 0 0 1 0-7H15"/><circle cx="18" cy="5" r="3"/></symbol>
+  <symbol id="lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect width="18" height="11" x="3" y="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
+  <symbol id="check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 6 9 17l-5-5"/></symbol>
+  <symbol id="x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 6 6 18"/><path d="m6 6 12 12"/></symbol>
+  <symbol id="info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><path d="M12 16v-4"/><path d="M12 8h.01"/></symbol>
+  <symbol id="history" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><path d="M3 3v5h5"/><path d="M12 7v5l4 2"/></symbol>
+  <symbol id="arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="m12 5 7 7-7 7"/></symbol>
+</svg>
+
+<a class="skip" href="#main">Skip to content</a>
+
+<header class="site-header">
+  <div class="wrap bar">
+    <a class="brand" href="#top" aria-label="ScamLens home"><svg class="ic" width="22" height="22"><use href="#shield"/></svg>ScamLens</a>
+    <nav class="nav" aria-label="Primary">
+      <a href="#how">How it works</a>
+      <a href="#signals">What it checks</a>
+      <a href="#report">The report</a>
+      <a href="#privacy">Privacy</a>
+      <a href="#faq">FAQ</a>
+    </nav>
+    <a class="btn btn-primary btn-sm" href="#install">Add to browser</a>
+  </div>
+</header>
+
+<main id="main">
+
+  <!-- Hero -->
+  <section class="hero" id="top">
+    <div class="wrap hero-grid">
+      <div class="hero-copy">
+        <p class="eyebrow">Browser extension · Chrome &amp; Edge</p>
+        <h1>Check before you click, pay or reply.</h1>
+        <p class="lead">ScamLens reads the page, message or link in front of you and shows the exact wording that looks suspicious, why it matters, and what to do next. It explains its reasoning instead of just handing you a score.</p>
+        <div class="cta-row">
+          <a class="btn btn-primary" href="#install">Add to browser</a>
+          <a class="btn btn-ghost" href="#how">See how it works <svg class="ic" width="15" height="15"><use href="#arrow"/></svg></a>
+        </div>
+        <p class="fine"><svg class="ic" width="13" height="13"><use href="#lock"/></svg>Nothing is scanned in the background. ScamLens only reads a page when you ask it to.</p>
+      </div>
+
+      <!-- Illustrative report card -->
+      <figure class="mock" aria-label="Example ScamLens report (illustrative)">
+        <div class="mock-top">
+          <span class="mono mock-url">help.example/analyse</span>
+          <span class="badge warn"><svg class="ic" width="14" height="14"><use href="#alert"/></svg>Medium risk</span>
+        </div>
+        <p class="mock-title">Delivery payment request</p>
+        <div class="finding">
+          <p class="f-head"><svg class="ic" width="15" height="15"><use href="#quote"/></svg>Pressure to act quickly</p>
+          <p class="f-quote">“within 2 hours”</p>
+          <p class="f-why">A short deadline can rush you into paying before you check the request.</p>
+        </div>
+        <div class="finding">
+          <p class="f-head"><svg class="ic" width="15" height="15"><use href="#quote"/></svg>Requests payment details</p>
+          <p class="f-quote">“Confirm your card”</p>
+          <p class="f-why">The message asks for card details through an unverified link.</p>
+        </div>
+        <div class="finding">
+          <p class="f-head"><svg class="ic" width="15" height="15"><use href="#quote"/></svg>Discourages verification</p>
+          <p class="f-quote">“Do not contact the courier”</p>
+        </div>
+        <figcaption>Illustrative example. The address is reserved for documentation.</figcaption>
+      </figure>
+    </div>
+  </section>
+
+  <!-- How it works -->
+  <section class="section" id="how">
+    <div class="wrap">
+      <p class="eyebrow">How it works</p>
+      <h2>Three steps, about the time it takes to hesitate.</h2>
+      <p class="section-lead">You decide what gets checked and when. There is no always-on monitoring.</p>
+
+      <ol class="steps">
+        <li class="card step">
+          <span class="step-n">1</span>
+          <svg class="ic step-ic" width="22" height="22"><use href="#scan"/></svg>
+          <h3>Choose what to check</h3>
+          <p>Open ScamLens on the page you’re viewing, select text and use the right-click menu, or paste a link or message into the box. A suspicious email, text or chat reply works the same way.</p>
+        </li>
+        <li class="card step">
+          <span class="step-n">2</span>
+          <svg class="ic step-ic" width="22" height="22"><use href="#list"/></svg>
+          <h3>We look for warning signs</h3>
+          <p>The visible text and links are analysed for the patterns scams rely on, such as urgency, requests for payment or codes, and links that hide their destination. The URL is also checked for structural red flags.</p>
+        </li>
+        <li class="card step">
+          <span class="step-n">3</span>
+          <svg class="ic step-ic" width="22" height="22"><use href="#route"/></svg>
+          <h3>Read the report, then act</h3>
+          <p>You get a clear result with the exact quotes that triggered it, factual notes about the domain, and numbered next steps. Copy the report to share with someone you trust.</p>
+        </li>
+      </ol>
+    </div>
+  </section>
+
+  <!-- Signals -->
+  <section class="section alt" id="signals">
+    <div class="wrap">
+      <p class="eyebrow">What it checks</p>
+      <h2>The patterns behind most scams.</h2>
+      <p class="section-lead">Each finding quotes the exact words from the page, so you can judge it yourself.</p>
+
+      <div class="grid-3">
+        <article class="card sig"><h3><svg class="ic" width="16" height="16"><use href="#quote"/></svg>Pressure to act quickly</h3><p>Tight deadlines, “final warning” language and threats of suspension are designed to stop you from thinking.</p></article>
+        <article class="card sig"><h3><svg class="ic" width="16" height="16"><use href="#quote"/></svg>Requests for payment details</h3><p>Asking for card numbers, fees or gift cards through a link you didn’t start.</p></article>
+        <article class="card sig"><h3><svg class="ic" width="16" height="16"><use href="#quote"/></svg>Secret codes and passwords</h3><p>One-time passcodes, PINs and logins are things a real service never asks you to hand over like this.</p></article>
+        <article class="card sig"><h3><svg class="ic" width="16" height="16"><use href="#quote"/></svg>Discouraging verification</h3><p>“Don’t contact anyone” or “keep this confidential” makes independent checking harder, which is the point.</p></article>
+        <article class="card sig"><h3><svg class="ic" width="16" height="16"><use href="#quote"/></svg>Unexpected prizes and refunds</h3><p>Rewards you never signed up for are a common way to start a conversation that ends with a payment.</p></article>
+        <article class="card sig"><h3><svg class="ic" width="16" height="16"><use href="#quote"/></svg>Link and domain observations</h3><p>URL shorteners, look-alike characters, embedded usernames, raw IP addresses and missing HTTPS, reported as facts rather than accusations.</p></article>
+      </div>
+    </div>
+  </section>
+
+  <!-- Report -->
+  <section class="section" id="report">
+    <div class="wrap split">
+      <div>
+        <p class="eyebrow">The report</p>
+        <h2>An answer you can check, not a black box.</h2>
+        <p class="section-lead left">Every result is built to be read in under a minute and to leave the decision with you.</p>
+        <ul class="ticks">
+          <li><svg class="ic" width="16" height="16"><use href="#check"/></svg><span><strong>A plain-language result.</strong> Likely scam, High risk, Medium risk, Low risk, No threat found, or Unclear.</span></li>
+          <li><svg class="ic" width="16" height="16"><use href="#check"/></svg><span><strong>Evidence you can verify.</strong> The exact text that raised each flag, with a short explanation.</span></li>
+          <li><svg class="ic" width="16" height="16"><use href="#check"/></svg><span><strong>Domain notes.</strong> Whether the connection is encrypted, and a clear statement of what that does and doesn’t prove.</span></li>
+          <li><svg class="ic" width="16" height="16"><use href="#check"/></svg><span><strong>What to do next.</strong> Numbered steps, such as opening the official app yourself instead of using the link.</span></li>
+          <li><svg class="ic" width="16" height="16"><use href="#check"/></svg><span><strong>Feedback.</strong> Think a result is wrong? Report it in one click.</span></li>
+        </ul>
+      </div>
+
+      <div class="card verdicts" aria-label="Possible results">
+        <p class="label">Possible results</p>
+        <ul>
+          <li><span class="badge bad"><svg class="ic" width="14" height="14"><use href="#shield"/></svg>Likely scam</span><span>Several strong warning signs.</span></li>
+          <li><span class="badge bad"><svg class="ic" width="14" height="14"><use href="#alert"/></svg>High risk</span><span>Treat as dangerous until verified.</span></li>
+          <li><span class="badge warn"><svg class="ic" width="14" height="14"><use href="#alert"/></svg>Medium risk</span><span>Warning signs that warrant caution.</span></li>
+          <li><span class="badge good"><svg class="ic" width="14" height="14"><use href="#check"/></svg>Low risk</span><span>Only limited warning signs.</span></li>
+          <li><span class="badge good"><svg class="ic" width="14" height="14"><use href="#shield"/></svg>No threat found</span><span>Nothing suspicious in what was checked.</span></li>
+          <li><span class="badge muted"><svg class="ic" width="14" height="14"><use href="#info"/></svg>Unclear</span><span>Not enough information for a verdict.</span></li>
+        </ul>
+        <p class="note">“No threat found” is never a guarantee of safety, and “Unclear” never means safe or dangerous on its own.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Privacy -->
+  <section class="section alt" id="privacy">
+    <div class="wrap">
+      <p class="eyebrow">Privacy</p>
+      <h2>You control when anything is read or sent.</h2>
+      <p class="section-lead">ScamLens is deliberately plain about what it handles.</p>
+
+      <div class="grid-2">
+        <div class="card">
+          <h3 class="h-row"><svg class="ic" width="18" height="18"><use href="#lock"/></svg>What is sent, and when</h3>
+          <p>Only when you press <em>Analyze</em> or use the right-click menu, the extension sends the page address, title, visible text and up to 60 links (or the text you selected or pasted) over HTTPS to the ScamLens analysis service to produce your report.</p>
+          <p>If you sign in, your request also carries a sign-in token so the service knows whose history to keep.</p>
+        </div>
+        <div class="card">
+          <h3 class="h-row"><svg class="ic" width="18" height="18"><use href="#x"/></svg>What never happens</h3>
+          <ul class="plain">
+            <li>No scanning in the background or on pages you didn’t choose.</li>
+            <li>No reading of other tabs or your browsing history.</li>
+            <li>No ads, and no selling of what you scan.</li>
+            <li>No passwords or card numbers are ever requested by the extension.</li>
+          </ul>
+        </div>
+        <div class="card">
+          <h3 class="h-row"><svg class="ic" width="18" height="18"><use href="#history"/></svg>Your history, your choice</h3>
+          <p>Signed out, your past scans are saved only on your device. Signed in with Google, they’re kept in your ScamLens account. Either way you can delete one item or clear everything from the History page.</p>
+        </div>
+        <div class="card">
+          <h3 class="h-row"><svg class="ic" width="18" height="18"><use href="#info"/></svg>Sign-in is optional</h3>
+          <p>You can scan without an account. Signing in with Google only adds account-based history; it doesn’t change what the result says.</p>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Honest limits -->
+  <section class="section" id="limits">
+    <div class="wrap narrow">
+      <p class="eyebrow">Good to know</p>
+      <h2>What ScamLens can’t do.</h2>
+      <p class="section-lead left">A good tool is clear about its limits. These matter.</p>
+      <div class="notice">
+        <p><strong>It’s an assessment, not proof.</strong> A flagged page isn’t a confirmed scam, and a clean result isn’t a guarantee of safety. Scammers adapt, and some pages are genuinely ambiguous.</p>
+        <p><strong>It’s one input, not the final word.</strong> When money, accounts or personal details are involved, confirm through a contact you find yourself, such as the company’s official app or a number printed on your card.</p>
+        <p><strong>Unknown isn’t the same as safe.</strong> If a site’s reputation can’t be checked, ScamLens says so rather than guessing.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- FAQ -->
+  <section class="section alt" id="faq">
+    <div class="wrap narrow">
+      <p class="eyebrow">FAQ</p>
+      <h2>Common questions.</h2>
+      <div class="faq">
+        <details><summary>Does ScamLens scan every page I visit?</summary><p>No. It reads a page only when you open the extension and choose to analyze it, use the right-click menu, or paste something in. It does nothing in the background.</p></details>
+        <details><summary>Which browsers does it work with?</summary><p>Chrome and Microsoft Edge, as well as other Chromium-based browsers that support Manifest V3 extensions.</p></details>
+        <details><summary>Can I check a text message or email that isn’t on a web page?</summary><p>Yes. Paste the message or a link into the box in the extension, or copy it into any page and select it. ScamLens checks the wording and any links it contains.</p></details>
+        <details><summary>Do I need an account?</summary><p>No. Signing in with Google is optional and only adds history that’s stored in your account instead of on your device.</p></details>
+        <details><summary>What if the result is wrong?</summary><p>Use <em>Report incorrect result</em> on the report. Feedback helps improve future results.</p></details>
+        <details><summary>If it says “No threat found”, can I relax?</summary><p>Treat it as a good sign, not a guarantee. If something asks for money, codes or passwords, verify it independently regardless of the result.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <!-- Final CTA -->
+  <section class="cta" id="install">
+    <div class="wrap cta-inner">
+      <svg class="ic cta-ic" width="34" height="34"><use href="#shield"/></svg>
+      <h2>Make “let me check that first” a one-click habit.</h2>
+      <p>Add ScamLens to your browser and keep it one click away for the next message that feels off.</p>
+      <div class="cta-row center">
+        <!-- Replace each # with your Chrome Web Store / Edge Add-ons listing URL -->
+        <a class="btn btn-light" href="#">Add to Chrome</a>
+        <a class="btn btn-outline" href="#">Add to Edge</a>
+      </div>
+    </div>
+  </section>
+</main>
+
+<footer class="site-footer">
+  <div class="wrap foot">
+    <a class="brand" href="#top"><svg class="ic" width="20" height="20"><use href="#shield"/></svg>ScamLens</a>
+    <!-- <nav aria-label="Footer">
+      <-- Replace # with your real pages -->
+      <!-- <a href="#privacy">Privacy</a>
+      <a href="#">Privacy policy</a>
+      <a href="#">Terms</a>
+      <a href="#">Contact</a> -->
+    <!-- </nav>  -->
+    <p>ScamLens provides assessments to help you decide, not proof of fraud or safety. <span id="y">Copyright 2026</span></p>
+  </div>
+</footer>
+
+</body>
+</html>

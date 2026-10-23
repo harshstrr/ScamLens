@@ -67,7 +67,7 @@ export function normalize(raw, payload = {}, source = "api") {
   const meta = VERDICTS[key];
 
   // What was scanned: a page/URL, or a pasted message that may contain a link.
-  const target = payload.url || firstUrl(payload.text) || "";
+  const target = payload.url || pick(raw, "url", "target", "page_url", "source_url") || firstUrl(payload.text) || "";
   const parts = urlParts(target);
 
   const findings = arr(pick(raw, "findings", "signals", "reasons", "flags", "evidence")).map(finding).filter((f) => f.explanation || f.quote);
@@ -96,8 +96,8 @@ export function normalize(raw, payload = {}, source = "api") {
     });
   }
 
-  const analyzedAt = new Date(pick(raw, "analyzed_at", "analyzedAt", "timestamp") || Date.now());
-  const title = str(pick(raw, "title", "page_title", "name")) ||
+  const analyzedAt = new Date(pick(raw, "analyzed_at", "analyzedAt", "created_at", "createdAt", "timestamp") || Date.now());
+  const title = str(pick(raw, "title", "page_title", "source_title", "name")) ||
     str(payload.title) ||
     (payload.kind === "message" ? "Selected message" : payload.kind === "url" ? "Link check" : parts?.hostname || "Page assessment");
   const noun = payload.kind === "message" ? "This message" : payload.kind === "url" ? "This link" : "This page";

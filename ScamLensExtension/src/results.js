@@ -1,4 +1,5 @@
 import { analyze, sendFeedback } from "./api.js";
+import { recordScan } from "./history-store.js";
 import { analyzeLocally } from "./analyzer.js";
 import { initTheme } from "./theme.js";
 import { hydrateIcons, icon } from "./icons.js";
@@ -10,10 +11,11 @@ let current = null;
 const PANELS = ["loading", "state", "report"];
 function show(which) { for (const id of PANELS) $(id).hidden = id !== which; }
 
-function showState({ glyph = "info", title, text, retry = false, local = false }) {
+function showState({ glyph = "info", title, text, retry = false, local = false, signin = false }) {
   $("state-icon").replaceChildren(icon(glyph, { size: 30 }));
   $("state-title").textContent = title;
   $("state-text").textContent = text;
+  $("sign-in").hidden = !signin;
   $("retry").hidden = !retry;
   $("use-local").hidden = !local;
   show("state");
@@ -129,9 +131,13 @@ async function run(forceLocal = false) {
   try {
     const result = forceLocal ? analyzeLocally(payload) : await analyze(payload);
     await chrome.storage.session.set({ latestScan: { payload, result } });
+    await recordScan(result);
     render(result);
   } catch (e) {
     if (e.kind === "cancelled") return;
+    if (e.kind === "auth") {
+      return showState({ glyph: "lock", title: "Sign in to continue", text: e.message || "Sign in with Google to scan.", signin: true, local: true });
+    }
     showState({
       glyph: e.kind === "network" || e.kind === "timeout" ? "wifi-off" : "triangle-alert",
       title: "We couldn't complete this scan",
@@ -141,6 +147,14 @@ async function run(forceLocal = false) {
   }
 }
 
+$("sign-in").addEventListener("click", async () => {
+  const btn = $("sign-in");
+  btn.disabled = true;
+  const res = await chrome.runtime.sendMessage({ type: "auth:signIn" }).catch(() => null);
+  btn.disabled = false;
+  if (res?.ok) return run(); // signed in: run the scan again
+  if (res && res.error) $("state-text").textContent = res.error;
+});
 $("retry").addEventListener("click", () => run());
 $("use-local").addEventListener("click", () => run(true));
 

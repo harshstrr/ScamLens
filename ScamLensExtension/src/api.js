@@ -1,4 +1,5 @@
-import { API_URL, FEEDBACK_URL, REQUEST_TIMEOUT_MS, MAX_TEXT_CHARS } from "./config.js";
+import { API_URL, FEEDBACK_URL, REQUEST_TIMEOUT_MS, MAX_TEXT_CHARS, NGROK_BYPASS_HEADERS } from "./config.js";
+import { getAccessToken, getUser } from "./auth.js";
 import { normalize } from "./normalize.js";
 import { analyzeLocally } from "./analyzer.js";
 
@@ -8,25 +9,45 @@ export class ApiError extends Error {
 
 export async function getEndpoint() {
   const { apiUrl } = await chrome.storage.local.get("apiUrl");
-  return String(apiUrl || API_URL || "").trim();
+  const configured = String(apiUrl || "").trim();
+  const previousBuiltIn = API_URL.replace(/\/scans\/analyze$/, "/analyze");
+  return (configured === previousBuiltIn ? API_URL : configured) || API_URL;
 }
 
 /**
- * Send the scan to the external API and return the normalized result.
+ * Send the scan to the ScamLens API and return the normalized result.
  * With no endpoint configured, falls back to the on-device check.
  */
 export async function analyze(payload, { signal } = {}) {
   const endpoint = await getEndpoint();
   if (!endpoint) return analyzeLocally(payload);
 
+  const user = await getUser();
+  let token = null;
+  if (user) {
+    try {
+      token = await getAccessToken();
+    } catch (e) {
+      throw new ApiError(e.message || "Your session expired. Sign in again to scan.", e.kind || "auth");
+    }
+    if (!token) throw new ApiError("Your session expired. Sign in again to scan.", "auth");
+  }
+
+  const pageText = String(payload.text || (payload.kind === "url" ? payload.url : "") || "");
+  const linkText = (payload.links || []).slice(0, 60)
+    .map((link) => [link.text, link.url].filter(Boolean).join(" "))
+    .filter(Boolean)
+    .join("\n");
+  const scanText = [pageText, linkText].filter(Boolean).join("\n").slice(0, MAX_TEXT_CHARS);
+  if (!scanText.trim()) throw new ApiError("There is no text or link to analyze.", "input");
+
   const body = {
-    kind: payload.kind,
-    url: payload.url || undefined,
-    page_url: payload.pageUrl || undefined,
-    title: payload.title || undefined,
-    text: String(payload.text || "").slice(0, MAX_TEXT_CHARS),
-    links: (payload.links || []).slice(0, 60),
-    client: { name: "scamlens-extension", version: chrome.runtime.getManifest().version },
+    source_type: payload.kind === "message" ? "message" : payload.kind === "website" ? "website" : "quick_scan",
+    source_url: (payload.url || payload.pageUrl || "").slice(0, 2048) || undefined,
+    source_title: String(payload.title || "").slice(0, 512) || undefined,
+    text: scanText,
+    save_to_history: Boolean(user),
+    save_content: false,
   };
 
   const ctrl = new AbortController();
@@ -34,14 +55,36 @@ export async function analyze(payload, { signal } = {}) {
   const onAbort = () => ctrl.abort("cancelled");
   signal?.addEventListener("abort", onAbort);
 
-  try {
-    const res = await fetch(endpoint, {
+  const send = (t) => {
+    const headers = new Headers({
+      "Content-Type": "application/json",
+      Accept: "application/json",
+      ...NGROK_BYPASS_HEADERS,
+    });
+    if (t) headers.set("Authorization", `Bearer ${t}`);
+    return fetch(endpoint, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json" },
+      headers,
       body: JSON.stringify(body),
       signal: ctrl.signal,
       credentials: "omit",
     });
+  };
+
+  try {
+    let res = await send(token);
+    if (res.status === 401 && token) { // token may have just expired: refresh once and retry
+      try {
+        token = await getAccessToken({ force: true });
+      } catch (e) {
+        throw new ApiError(e.message || "Your session expired. Sign in again to scan.", e.kind || "auth");
+      }
+      if (!token) throw new ApiError("Your session expired. Sign in again to scan.", "auth");
+      res = await send(token);
+    }
+    if (res.status === 401 || res.status === 403) {
+      throw new ApiError(token ? "Your account isn't allowed to scan. Try signing out and in again." : "Sign in with Google to scan. Open Privacy & settings to sign in.", "auth");
+    }
     if (!res.ok) {
       throw new ApiError(
         res.status === 429 ? "Too many scans right now. Wait a moment and try again."

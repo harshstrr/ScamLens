@@ -1,0 +1,25 @@
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: scamlens
+      POSTGRES_USER: scamlens
+      POSTGRES_PASSWORD: scamlens_dev_password
+    ports: ["5432:5432"]
+    volumes: ["scamlens_pgdata:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U scamlens -d scamlens"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+  api:
+    build: .
+    env_file: .env
+    environment:
+      DATABASE_URL: postgresql+psycopg://scamlens:scamlens_dev_password@db:5432/scamlens
+    ports: ["8000:8000"]
+    depends_on:
+      db:
+        condition: service_healthy
+volumes:
+  scamlens_pgdata:

@@ -12,3 +12,4 @@ input:focus,select:focus{outline:2px solid var(--text);outline-offset:1px}
 .row .btn{width:auto;min-width:96px}
 .status{margin-top:10px;min-height:16px}
 .status.bad{color:var(--bad)!important}.status.ok{color:var(--good)!important}
+code{font-family:var(--mono);font-size:11px;background:var(--soft);padding:2px 5px;border-radius:5px;overflow-wrap:anywhere}

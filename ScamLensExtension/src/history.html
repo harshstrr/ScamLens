@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>ScamLens · History</title>
+  <link rel="icon" href="../assets/icon-48.png">
+  <link rel="stylesheet" href="theme.css">
+  <link rel="stylesheet" href="results.css">
+  <link rel="stylesheet" href="history.css">
+</head>
+<body>
+<div class="page">
+  <header class="topbar">
+    <a class="brand" href="index.html" aria-label="ScamLens"><span data-icon="shield-check" data-size="22"></span>ScamLens</a>
+    <nav class="nav">
+      <a class="settings-link current" href="history.html" aria-current="page">History</a>
+      <a class="settings-link" href="options.html">Privacy &amp; settings <span data-icon="sliders" data-size="15"></span></a>
+    </nav>
+  </header>
+
+  <main>
+    <div class="h-head">
+      <div>
+        <h1>History</h1>
+        <p id="source" class="source"><span id="source-icon"></span><span id="source-text">Loading…</span></p>
+      </div>
+      <button id="clear" class="btn quiet small" hidden><span data-icon="trash-2" data-size="14"></span><span id="clear-label">Clear all</span></button>
+    </div>
+
+    <div id="nudge" class="nudge" hidden>
+      <span data-icon="info" data-size="15"></span>
+      <p>Sign in to keep your history in your ScamLens account. Scans you run while signed in are saved there instead of on this device.</p>
+      <button id="nudge-sign-in" class="btn small"><span data-icon="log-in" data-size="14"></span>Continue with Google</button>
+    </div>
+
+    <div class="tools">
+      <label class="search"><span data-icon="search" data-size="15"></span>
+        <input id="q" type="search" placeholder="Search title, address or result" autocomplete="off" aria-label="Search history">
+      </label>
+      <div class="seg" role="group" aria-label="Filter by result">
+        <button type="button" data-f="all" aria-pressed="true">All</button>
+        <button type="button" data-f="risky" aria-pressed="false">Risky</button>
+        <button type="button" data-f="clear" aria-pressed="false">Low risk</button>
+      </div>
+    </div>
+
+    <!-- Skeleton while the list loads -->
+    <div id="loading" class="list skel" aria-busy="true" aria-live="polite">
+      <div class="card hrow"><div class="hmain"><span class="sk" style="width:46%;height:13px"></span><span class="sk" style="width:62%;height:10px"></span><span class="sk" style="width:38%;height:10px"></span></div><div class="hside"><span class="sk" style="width:84px;height:12px"></span><span class="sk" style="width:110px;height:10px"></span></div></div>
+      <div class="card hrow"><div class="hmain"><span class="sk" style="width:38%;height:13px"></span><span class="sk" style="width:54%;height:10px"></span><span class="sk" style="width:44%;height:10px"></span></div><div class="hside"><span class="sk" style="width:84px;height:12px"></span><span class="sk" style="width:110px;height:10px"></span></div></div>
+      <div class="card hrow"><div class="hmain"><span class="sk" style="width:52%;height:13px"></span><span class="sk" style="width:58%;height:10px"></span><span class="sk" style="width:34%;height:10px"></span></div><div class="hside"><span class="sk" style="width:84px;height:12px"></span><span class="sk" style="width:110px;height:10px"></span></div></div>
+      <div class="card hrow"><div class="hmain"><span class="sk" style="width:41%;height:13px"></span><span class="sk" style="width:49%;height:10px"></span><span class="sk" style="width:40%;height:10px"></span></div><div class="hside"><span class="sk" style="width:84px;height:12px"></span><span class="sk" style="width:110px;height:10px"></span></div></div>
+    </div>
+
+    <div id="list" class="list" hidden></div>
+    <div class="more"><button id="more" class="btn" hidden>Load more</button></div>
+
+    <div id="state" class="state" hidden>
+      <span class="glyph" id="state-icon"></span>
+      <h2 id="state-title"></h2>
+      <p id="state-text"></p>
+      <div class="row">
+        <button id="state-sign-in" class="btn primary" hidden><span data-icon="log-in" data-size="14"></span>Continue with Google</button>
+        <button id="state-retry" class="btn" hidden><span data-icon="refresh-cw" data-size="14"></span>Try again</button>
+      </div>
+    </div>
+  </main>
+</div>
+<script type="module" src="history.js"></script>
+</body>
+</html>
