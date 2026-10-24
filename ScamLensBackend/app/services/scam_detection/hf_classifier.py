@@ -1,8 +1,10 @@
 from functools import lru_cache
 from threading import Lock
-
+from app.core.config import get_settings
 from transformers import pipeline
+settings = get_settings()
 
+HF_TOKEN = settings.hf_token
 MODEL_ID = "Horizon-Labs/phishing-scam-detector-base"
 MAX_TOKENS = 384
 
@@ -11,12 +13,22 @@ _inference_lock = Lock()
 
 @lru_cache(maxsize=1)
 def _load_classifier():
-    return pipeline(
-        task="text-classification",
-        model=MODEL_ID,
-        top_k=None,
-        device=-1, 
-    )
+    """
+    Loads the text classification pipeline.
+    Passes the token directly to the pipeline config to suppress unauthenticated warnings.
+    """
+    pipeline_kwargs = {
+        "task": "text-classification",
+        "model": MODEL_ID,
+        "top_k": None,
+        "device": -1,  # Forces CPU inference
+    }
+    
+    # Explicitly pass the token if it exists in the environment
+    if HF_TOKEN:
+        pipeline_kwargs["token"] = HF_TOKEN
+
+    return pipeline(**pipeline_kwargs)
 
 
 def predict_scam(text: str) -> dict:
@@ -56,3 +68,5 @@ def predict_scam(text: str) -> dict:
         "legitimate_score": scores["legitimate"],
         "prediction": max(scores, key=scores.get),
     }
+
+
