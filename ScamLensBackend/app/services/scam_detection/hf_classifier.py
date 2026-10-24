@@ -11,21 +11,15 @@ _inference_lock = Lock()
 
 @lru_cache(maxsize=1)
 def _load_classifier():
-    """Load once per Python process and reuse the model."""
     return pipeline(
         task="text-classification",
         model=MODEL_ID,
         top_k=None,
-        device=-1,  # CPU; use a supported GPU configuration if available
+        device=-1, 
     )
 
 
 def predict_scam(text: str) -> dict:
-    """
-    Return model scores for fraud, spam and legitimate.
-
-    These are model scores, not guaranteed calibrated probabilities.
-    """
     if not isinstance(text, str) or not text.strip():
         raise ValueError("Text must be a non-empty string.")
 
