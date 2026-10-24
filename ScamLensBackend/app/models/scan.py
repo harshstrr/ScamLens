@@ -19,8 +19,7 @@ class ScanRecord(Base):
     risk_score: Mapped[int] = mapped_column(Integer, nullable=False)
     confidence: Mapped[str] = mapped_column(String(24), nullable=False)
     summary: Mapped[str] = mapped_column(Text, nullable=False)
-    model_analysis: Mapped[list] = mapped_column(JSON,default=list, nullable=False)
-    
+
     findings: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     recommendations: Mapped[list] = mapped_column(JSON, default=list, nullable=False)
     analysis_version: Mapped[str] = mapped_column(String(32), default="heuristic-v1", nullable=False)

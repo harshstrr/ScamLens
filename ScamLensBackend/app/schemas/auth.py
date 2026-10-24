@@ -1,4 +1,5 @@
 from pydantic import BaseModel, ConfigDict, EmailStr, Field
+
 class GoogleSignInRequest(BaseModel):
     id_token: str = Field(min_length=20, max_length=12000)
  

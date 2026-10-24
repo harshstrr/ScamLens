@@ -18,8 +18,8 @@ def analyze_scan(
     body: AnalyzeRequest,
     db: Session = Depends(get_db),
     user: Account | None = Depends(optional_user),
-):
-    # 1. Require authentication only when saving to history.
+) -> ScanResult:
+    # 1. Require authentication only when saving to history
     if body.save_to_history and user is None:
         raise HTTPException(
             status_code=401,
@@ -29,16 +29,13 @@ def analyze_scan(
             ),
         )
 
+    # 2. Run deterministic code-only heuristic analysis
     result = analyze(body.text, body.source_url)
-
-    combined = result["combined_prediction"]
-
-    result["risk_score"] = combined["final_risk_score"]
-    result["risk_level"] = combined["final_risk_level"]
 
     scan_id = None
     saved = False
 
+    # 3. Persist record if authenticated and requested
     if body.save_to_history and user is not None:
         row = ScanRecord(
             user_id=user.id,
@@ -53,45 +50,41 @@ def analyze_scan(
             findings=result["findings"],
             recommendations=result["recommendations"],
             analysis_version=result["analysis_version"],
-            model_analysis=result["model_analysis"],
         )
 
         try:
             db.add(row)
             db.commit()
             db.refresh(row)
-
-            scan_id = row.id
+            scan_id = str(row.id)
             saved = True
-
         except Exception:
             db.rollback()
             raise
 
+    # 4. Construct clean response
     return ScanResult(
         id=scan_id,
         source_type=body.source_type,
         source_url=body.source_url,
         source_title=body.source_title,
-        created_at=result.get(
-            "created_at",
-            datetime.now(timezone.utc),
-        ),
         saved_to_history=saved,
-        **{
-            key: value
-            for key, value in result.items()
-            if key not in {
-                "id",
-                "source_type",
-                "source_url",
-                "source_title",
-                "created_at",
-                "saved_to_history",
-            }
-        },
+        created_at=result.get("created_at", datetime.now(timezone.utc)),
+        verdict=result["verdict"],
+        is_safe=result["is_safe"],
+        primary_category=result["primary_category"],
+        risk_level=result["risk_level"],
+        risk_score=result["risk_score"],
+        confidence=result["confidence"],
+        critical_indicators=result["critical_indicators"],
+        scores=result["scores"],
+        summary=result["summary"],
+        findings=result["findings"],
+        recommendations=result["recommendations"],
+        analysis_version=result["analysis_version"],
     )
-    
+
+ 
 @router.get("", response_model=ScanPage)
 def list_scans(
     page: int = Query(1, ge=1),

@@ -3,7 +3,6 @@ from fastapi.middleware.cors import CORSMiddleware
 from app.api.router import router
 from app.core.config import get_settings
 from app.db.session import init_db
-from app.services.scam_detection.hf_classifier import _load_classifier
 from contextlib import asynccontextmanager
 
 settings = get_settings()
@@ -22,10 +21,5 @@ def startup():
 def root():
     return {"name": settings.app_name, "status": "ok", "docs": "/docs"}
 
-@app.get("/model")
-async def modelLoad():
-    print("Loading scam prediction ML model into memory...")
-    _load_classifier()
-    print("Loading complete...")
 
 app.include_router(router)
