@@ -5,25 +5,19 @@
     <item name="android:statusBarColor">@android:color/transparent</item>
     <item name="android:navigationBarColor">@android:color/transparent</item>
   </style>
-  <style name="Theme.App.SplashScreen" parent="AppTheme">
-    <item name="android:windowBackground">@drawable/splashscreen_logo</item>
+  <style name="Theme.App.SplashScreen" parent="Theme.SplashScreen">
     <item name="windowSplashScreenBackground">@color/splashscreen_background</item>
     <item name="windowSplashScreenAnimatedIcon">@drawable/splashscreen_logo</item>
     <item name="postSplashScreenTheme">@style/AppTheme</item>
     <item name="android:windowSplashScreenBehavior">icon_preferred</item>
-  
   </style>
-  <style name="Theme.QuickScan" parent="@android:style/Theme.Translucent.NoTitleBar">
-    <item name="android:windowIsTranslucent">true</item>
+
+  <!-- Missing theme required by QuickScanActivity -->
+  <style name="Theme.QuickScan" parent="Theme.AppCompat.DayNight.NoActionBar">
+    <!-- Since this handles quick scan features, we make the background translucent/clear -->
     <item name="android:windowBackground">@android:color/transparent</item>
+    <item name="android:windowIsTranslucent">true</item>
     <item name="android:windowContentOverlay">@null</item>
-    <item name="android:backgroundDimEnabled">false</item>
-    <item name="android:windowAnimationStyle">@null</item>
-    <item name="android:windowDrawsSystemBarBackgrounds">true</item>
-    <item name="android:statusBarColor">@android:color/transparent</item>
-    <item name="android:navigationBarColor">@android:color/transparent</item>
-    <item name="android:windowLayoutInDisplayCutoutMode" tools:targetApi="p">shortEdges</item>
-    <item name="android:enforceNavigationBarContrast" tools:targetApi="q">false</item>
-    <item name="android:enforceStatusBarContrast" tools:targetApi="q">false</item>
+    <item name="android:windowNoTitle">true</item>
   </style>
 </resources>
