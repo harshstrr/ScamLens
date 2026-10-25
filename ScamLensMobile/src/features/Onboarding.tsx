@@ -1,25 +1,26 @@
-import React, { useEffect, useState } from "react";
+import { signInWithGoogle } from "@/services/api-service";
+import { saveAuthResponse } from "@/services/auth-service";
+import { startGuestSession } from "@/services/scan-history-storage";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { router } from "expo-router";
 import {
-  View,
-  Text,
-  Pressable,
-  StatusBar,
-  useWindowDimensions,
-} from "react-native";
-import {
-  SafeAreaView,
-  useSafeAreaInsets,
-} from "react-native-safe-area-context";
-import {
-  Shield,
-  ShieldCheck,
   Info,
   LockKeyhole,
+  Shield,
+  ShieldCheck,
   User2,
 } from "lucide-react-native";
-import { router } from "expo-router";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Pressable,
+  Text,
+  useColorScheme,
+  useWindowDimensions,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 import GoogleIcon from "../../assets/Google.svg";
-import { GoogleSignin } from "@react-native-google-signin/google-signin";
 
 const onboardingData = [
   {
@@ -47,10 +48,9 @@ const onboardingData = [
 
 export default function OnboardingScreen() {
   const [currentIndex, setCurrentIndex] = useState(0);
-  const insets = useSafeAreaInsets();
-
   const [isSigningIn, setIsSigningIn] = useState(false);
   const { height } = useWindowDimensions();
+  const isDark = useColorScheme() === "dark";
 
   const current = onboardingData[currentIndex];
   const isLastScreen = currentIndex === onboardingData.length - 1;
@@ -58,7 +58,6 @@ export default function OnboardingScreen() {
   const handleContinue = () => {
     if (isLastScreen) {
       // Replace this with your navigation to the main app.
-      console.log("Onboarding completed");
       setCurrentIndex(0);
       return;
     }
@@ -68,8 +67,8 @@ export default function OnboardingScreen() {
 
   useEffect(() => {
     GoogleSignin.configure({
-      webClientId: "704781607192-hjpi53ujt8q1k2oppu7hcqcaaftu7ri3.apps.googleusercontent.com",
-      
+      webClientId:
+        "704781607192-hjpi53ujt8q1k2oppu7hcqcaaftu7ri3.apps.googleusercontent.com",
     });
   }, []);
 
@@ -79,24 +78,46 @@ export default function OnboardingScreen() {
     try {
       setIsSigningIn(true);
       await GoogleSignin.hasPlayServices({
-        showPlayServicesUpdateDialog: true, 
+        showPlayServicesUpdateDialog: true,
       });
 
       const response = await GoogleSignin.signIn();
+      if (response.type !== "success") return;
 
-      console.log("Google SignIn Response:", response);
-      // Navigate to your main application screen
+      const idToken = response.data.idToken;
+      if (!idToken) {
+        throw new Error("Google sign-in did not return an identity token.");
+      }
+
+      const authResponse = await signInWithGoogle(idToken);
+      await saveAuthResponse(authResponse);
       router.replace("/tabs/home");
-    } catch (error: any) {
-      console.error(error);
+    } catch (error: unknown) {
+      Alert.alert(
+        "Sign-in failed",
+        error instanceof Error ? error.message : "Please try again.",
+      );
     } finally {
       setIsSigningIn(false);
     }
   };
 
+  const handleContinueAsGuest = async () => {
+    try {
+      await startGuestSession();
+      router.replace("/tabs/home");
+    } catch (error: unknown) {
+      Alert.alert(
+        "Could not continue",
+        error instanceof Error
+          ? error.message
+          : "Guest mode could not be saved on this device.",
+      );
+    }
+  };
+
   return (
-    <SafeAreaView className="flex-1 bg-white">
-      <StatusBar barStyle="dark-content" />
+    <SafeAreaView className="flex-1 bg-white dark:bg-[#111113]">
       <View
         className="flex-1 px-6 "
         style={
@@ -108,8 +129,12 @@ export default function OnboardingScreen() {
         {/* Header */}
         <View className="flex-row items-center my-6">
           <View className="flex-row items-center gap-2">
-            <Shield size={28} color="#202020" strokeWidth={1.6} />
-            <Text className="text-2xl font-bold tracking-widest text-[#202020]">
+            <Shield
+              size={28}
+              color={isDark ? "#F5F5F7" : "#202020"}
+              strokeWidth={1.6}
+            />
+            <Text className="text-2xl font-bold tracking-widest text-[#202020] dark:text-[#F5F5F7]">
               ScamLens
             </Text>
           </View>
@@ -117,7 +142,7 @@ export default function OnboardingScreen() {
 
         {/* Welcome label and Skip */}
         <View className="mt-4 flex-row items-center justify-between">
-          <Text className="text-sm font-semibold tracking-wider text-[#666666]">
+          <Text className="text-sm font-semibold tracking-wider text-[#666666] dark:text-[#A1A1AA]">
             WELCOME TO SCAMLENS
           </Text>
         </View>
@@ -129,44 +154,52 @@ export default function OnboardingScreen() {
             className="items-center"
             style={{ marginTop: Math.max(48, height * 0.1) }}
           >
-            <View className="h-[80px] w-[80px] items-center justify-center rounded-[20px] border border-[#EAEAEA] bg-[#FAFAFA] shadow-sm">
+            <View className="h-[80px] w-[80px] items-center justify-center rounded-[20px] border border-[#EAEAEA] bg-[#FAFAFA] shadow-sm dark:border-[#3A3A3C] dark:bg-[#1C1C1E]">
               {current.icon === "shield-check" ? (
-                <ShieldCheck size={36} color="#202020" strokeWidth={1.2} />
+                <ShieldCheck
+                  size={36}
+                  color={isDark ? "#F5F5F7" : "#202020"}
+                  strokeWidth={1.2}
+                />
               ) : (
-                <Shield size={36} color="#202020" strokeWidth={1.2} />
+                <Shield
+                  size={36}
+                  color={isDark ? "#F5F5F7" : "#202020"}
+                  strokeWidth={1.2}
+                />
               )}
             </View>
           </View>
 
           {/* Title and description */}
           <View className="mt-12">
-            <Text className="text-3xl font-extrabold leading-[38px] tracking-[-0.5px] text-[#202020]">
+            <Text className="text-3xl font-extrabold leading-[38px] tracking-[-0.5px] text-[#202020] dark:text-[#F5F5F7]">
               {current.title}
             </Text>
 
-            <Text className="mt-4 text-base leading-[24px] text-[#555555]">
+            <Text className="mt-4 text-base leading-[24px] text-[#555555] dark:text-[#D4D4D8]">
               {current.description}
             </Text>
 
             {/* Supporting note */}
-            <View className="mt-5 flex-row items-start gap-2 bg-[#FAFAFA] p-3 rounded-lg border border-[#F0F0F0]">
+            <View className="mt-5 flex-row items-start gap-2 bg-[#FAFAFA] p-3 rounded-lg border border-[#F0F0F0] dark:bg-[#1C1C1E] dark:border-[#3A3A3C]">
               {currentIndex === 2 ? (
                 <LockKeyhole
                   size={16}
-                  color="#666666"
+                  color={isDark ? "#A1A1AA" : "#666666"}
                   strokeWidth={1.5}
                   style={{ marginTop: 2 }}
                 />
               ) : (
                 <Info
                   size={16}
-                  color="#666666"
+                  color={isDark ? "#A1A1AA" : "#666666"}
                   strokeWidth={1.5}
                   style={{ marginTop: 2 }}
                 />
               )}
 
-              <Text className="flex-1 text-xs leading-[18px] text-[#666666]">
+              <Text className="flex-1 text-xs leading-[18px] text-[#666666] dark:text-[#A1A1AA]">
                 {current.note}
               </Text>
             </View>
@@ -181,8 +214,8 @@ export default function OnboardingScreen() {
                   key={index}
                   className={`h-[4px] rounded-full transition-all ${
                     currentIndex === index
-                      ? "w-[24px] bg-[#202020]"
-                      : "w-[8px] bg-[#E5E5E5]"
+                      ? "w-[24px] bg-[#202020] dark:bg-[#F5F5F7]"
+                      : "w-[8px] bg-[#E5E5E5] dark:bg-[#3A3A3C]"
                   }`}
                 />
               ))}
@@ -193,9 +226,9 @@ export default function OnboardingScreen() {
                 onPress={handleContinue}
                 accessibilityRole="button"
                 accessibilityLabel={isLastScreen ? "Get started" : "Continue"}
-                className="h-[52px] items-center justify-center rounded-[12px] bg-[#181818] active:bg-[#333333] elevation-1"
+                className="h-[52px] items-center justify-center rounded-[12px] bg-[#181818] active:bg-[#333333] elevation-1 dark:bg-[#F5F5F7] dark:active:bg-[#D4D4D8]"
               >
-                <Text className="text-base font-bold text-white">
+                <Text className="text-base font-bold text-white dark:text-[#111113]">
                   {isLastScreen ? "Get Started" : "Continue"}
                 </Text>
               </Pressable>
@@ -203,30 +236,31 @@ export default function OnboardingScreen() {
               <View className="">
                 <Pressable
                   onPress={handleGoogleSignIn}
-                  className="h-[52px] flex-row gap-4 items-center justify-center rounded-[12px] bg-[#fff] active:bg-[#fff] border border-[#181818] elevation-1"
+                  disabled={isSigningIn}
+                  className="h-[52px] flex-row gap-4 items-center justify-center rounded-[12px] bg-[#fff] active:bg-[#fff] border border-[#181818] elevation-1 dark:bg-[#1C1C1E] dark:active:bg-[#1C1C1E] dark:border-[#52525B]"
                 >
                   <GoogleIcon width={20} height={20} />
 
-                  <Text className="text-base font-semibold text-[#181818]">
+                  <Text className="text-base font-semibold text-[#181818] dark:text-[#F5F5F7]">
                     Sign in with Google
                   </Text>
                 </Pressable>
 
                 <View className="flex-row items-center my-6">
-                  <View className="flex-1 h-[1px] bg-[#EAEAEA]" />
+                  <View className="flex-1 h-[1px] bg-[#EAEAEA] dark:bg-[#3A3A3C]" />
 
-                  <Text className="mx-4 text-sm font-medium tracking-wide text-[#858585] uppercase">
+                  <Text className="mx-4 text-sm font-medium tracking-wide text-[#858585] uppercase dark:text-[#A1A1AA]">
                     or
                   </Text>
-                  <View className="flex-1 h-[1px] bg-[#EAEAEA]" />
+                  <View className="flex-1 h-[1px] bg-[#EAEAEA] dark:bg-[#3A3A3C]" />
                 </View>
 
                 <Pressable
-                  onPress={() => router.replace("/tabs/home")}
-                  className="h-[52px] flex-row gap-4 items-center justify-center rounded-[12px] bg-[#181818] active:bg-[#333333] elevation-1"
+                  onPress={handleContinueAsGuest}
+                  className="h-[52px] flex-row gap-4 items-center justify-center rounded-[12px] bg-[#181818] active:bg-[#333333] elevation-1 dark:bg-[#F5F5F7] dark:active:bg-[#D4D4D8]"
                 >
-                  <User2 color={"#fff"} size={21} />
-                  <Text className="text-base font-semibold text-white">
+                  <User2 color={isDark ? "#111113" : "#fff"} size={21} />
+                  <Text className="text-base font-semibold text-white dark:text-[#111113]">
                     Continue as Guest
                   </Text>
                 </Pressable>
@@ -234,7 +268,7 @@ export default function OnboardingScreen() {
             )}
 
             {/* Step indicator */}
-            <Text className="mt-5 mb-2 text-center text-xs text-[#858585]">
+            <Text className="mt-5 mb-2 text-center text-xs text-[#858585] dark:text-[#A1A1AA]">
               Understand before you trust.
             </Text>
           </View>

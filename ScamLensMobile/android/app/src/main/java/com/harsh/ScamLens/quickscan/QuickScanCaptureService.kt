@@ -29,8 +29,8 @@ import java.util.concurrent.atomic.AtomicBoolean
 
 class QuickScanCaptureService : Service() {
     companion object {
-        const val ACTION_CAPTURE = "com.anonymous.ScamLensMobile.quickscan.CAPTURE"
-        const val ACTION_DISMISS = "com.anonymous.ScamLensMobile.quickscan.DISMISS"
+        const val ACTION_CAPTURE = "com.harsh.ScamLens.quickscan.CAPTURE"
+        const val ACTION_DISMISS = "com.harsh.ScamLens.quickscan.DISMISS"
         const val EXTRA_RESULT_CODE = "capture_result_code"
         const val EXTRA_RESULT_DATA = "capture_result_data"
         private const val CHANNEL = "scamlens_quick_scan"
@@ -107,86 +107,94 @@ class QuickScanCaptureService : Service() {
         }
     }
 
-    
-private fun recognize(image: Image) {
-    val bitmap = try {
-        toBitmap(image)
-    } catch (e: Exception) {
-        QuickScanLog.e("Frame conversion failed", e)
-        null
-    } finally {
-        image.close()
+    private fun prepareOcrText(rawText: String): String {
+        return rawText
+            .replace("\u0000", "")
+            .replace("\r\n", "\n")
+            .replace('\r', '\n')
+            .trim()
+            .take(40000)
     }
-
-    if (bitmap == null) {
-        runMain {
-            showResult(unknown("Could not read the captured screen."))
+        
+    private fun recognize(image: Image) {
+        val bitmap = try {
+            toBitmap(image)
+        } catch (e: Exception) {
+            QuickScanLog.e("Frame conversion failed", e)
+            null
+        } finally {
+            image.close()
         }
-        return
-    }
 
-    val recognizer = TextRecognition.getClient(
-        TextRecognizerOptions.DEFAULT_OPTIONS
-    )
-
-    recognizer.process(InputImage.fromBitmap(bitmap, 0))
-        .addOnSuccessListener { result ->
-            val extractedText = result.text.trim()
-            
-            bitmap.recycle()
-            recognizer.close()
-            releaseProjection()
-
-            if (extractedText.isBlank()) {
-                showResult(
-                    unknown("No readable text was found on this screen.")
-                )
-                return@addOnSuccessListener
-            }
-
-            // Show the loading sheet while risk analysis runs.
+        if (bitmap == null) {
             runMain {
-                if (Settings.canDrawOverlays(this)) {
-                    if (overlay == null) {
-                        overlay = ResultOverlay(
-                            context = this,
-                            onDismiss = { stopEverything() },
-                            onViewReport = { verdict ->
-                                openAppFallback(verdict)
-                                stopEverything()
-                            }
-                        )
-                    }
-                    overlay?.showLoading()
-                }
+                showResult(unknown("Could not read the captured screen."))
             }
+            return
+        }
 
-            Thread {
-                val verdict = try {
-                    ScanAnalysis.analyze(extractedText)
-                } catch (e: Exception) {
-                    QuickScanLog.e("Risk analysis failed", e)
-                    unknown("Analysis failed. Please try again.")
+        val recognizer = TextRecognition.getClient(
+            TextRecognizerOptions.DEFAULT_OPTIONS
+        )
+
+        recognizer.process(InputImage.fromBitmap(bitmap, 0))
+            .addOnSuccessListener { result ->
+                val extractedText = prepareOcrText(result.text)
+                
+                bitmap.recycle()
+                recognizer.close()
+                releaseProjection()
+
+                if (extractedText.isBlank()) {
+                    showResult(
+                        unknown("No readable text was found on this screen.")
+                    )
+                    return@addOnSuccessListener
                 }
+
+                // Show the loading sheet while risk analysis runs.
+                runMain {
+                    if (Settings.canDrawOverlays(this)) {
+                        if (overlay == null) {
+                            overlay = ResultOverlay(
+                                context = this,
+                                onDismiss = { stopEverything() },
+                                onViewReport = { verdict ->
+                                    openAppFallback(verdict)
+                                    stopEverything()
+                                }
+                            )
+                        }
+                        overlay?.showLoading()
+                    }
+                }
+
+                Thread {
+                    val verdict = try {
+                        ScanAnalysis.analyze(applicationContext, extractedText)
+                    } catch (e: Exception) {
+                        QuickScanLog.e("Risk analysis failed", e)
+                        unknown("Analysis failed. Please try again.")
+                    }
+
+                    runMain {
+                        showResult(verdict)
+                    }
+                }.start()
+            }
+            .addOnFailureListener { error ->
+                bitmap.recycle()
+                recognizer.close()
+                QuickScanLog.e("ML Kit OCR failed", error)
+                releaseProjection()
 
                 runMain {
-                    showResult(verdict)
+                    showResult(
+                        unknown("Text recognition failed. Please try again.")
+                    )
                 }
-            }.start()
-        }
-        .addOnFailureListener { error ->
-            bitmap.recycle()
-            recognizer.close()
-            QuickScanLog.e("ML Kit OCR failed", error)
-            releaseProjection()
-
-            runMain {
-                showResult(
-                    unknown("Text recognition failed. Please try again.")
-                )
             }
-        }
-}
+    }
 
 
     private fun toBitmap(image: Image): Bitmap {

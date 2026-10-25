@@ -1,123 +1,60 @@
-import { exitApp } from "@logicwind/react-native-exit-app";
-import { AxiosHeaders } from "axios";
-
-import { registerAuthInterceptor } from "./auth-interceptor";
-import { getStoredToken } from "./auth-service";
+import { isAxiosError } from "axios";
+import {
+  initializeAuth,
+  registerAuthInterceptor,
+} from "./auth-interceptor";
 import { api } from "./http-client";
 import { hideLoader, showLoader } from "./loader-service";
 
-// Auth interceptor
 registerAuthInterceptor();
+void initializeAuth().catch((error: unknown) => {
+  console.error("Failed to restore secure credentials", error);
+});
 
-/**
- * REQUEST INTERCEPTOR
- */
 api.interceptors.request.use(
- async (config) => {
-
+  (config) => {
     showLoader();
-    
-    const token = getStoredToken();
-
-    if (token) {
-      if (!(config.headers instanceof AxiosHeaders)) {
-        config.headers = new AxiosHeaders(config.headers);
-      }
-
-      config.headers.set("Authorization", `Bearer ${token}`);
-    }
-
-
-    //  try {
-    //   addBreadcrumb({
-    //     message: `Request: ${config.method?.toUpperCase()} ${config.url}`,
-    //     category: "http",
-    //     data: {
-    //       url: config.url,
-    //       method: config.method,
-    //       payload: config.data,
-    //     },
-    //   });
-    // } catch (err) {
-    //   // don't break request flow
-    // }
-
     return config;
   },
-  (error) => {
+  (error: unknown) => {
     hideLoader();
-
-    let message = "Something went wrong";
-
-    if (error.response) {
-      message =
-        error.response.data?.message ||
-        error.response.data?.error ||
-        "Server error";
-    } else if (error.request) {
-      message = "Network error. Please check your connection.";
-    } else {
-      // Other errors
-      message = error.message;
-    }
-
-    return Promise.reject(new Error(message));
+    return Promise.reject(error);
   },
 );
 
-/**
- * RESPONSE INTERCEPTOR
- */
 api.interceptors.response.use(
   (response) => {
     hideLoader();
-    return response.data;
+    return response;
   },
-  async (error) => {
+  (error: unknown) => {
     hideLoader();
-
-    const response = error.response;
-
-    let message = "Something went wrong";
-
-    if(response?.status === 429) {
-
-        //Backend , msg is in response.data need to fix.
-        message = response.data?.message || "Too Many Request. Try Again after Sometime.";
-        
-        setTimeout(() => {
-          exitApp();
-        }, 3000)
-
-        return Promise.reject(new Error(message));
-      }
-
-    if (response) {
-      message =
-        response.data?.message || response.data?.error || "Server error";
-    } else if (error.request) {
-      message = "Network error. Please check your connection.";
-    } else if (error.message) {
-      message = error.message;
+    console.log(error)
+    if (!isAxiosError(error)) {
+      return Promise.reject(error);
     }
 
-    // try {
-    //   captureException(error, {
-    //     url: error.config?.url,
-    //     method: error.config?.method,
-    //     status: response?.status,
-    //     requestPayload: error.config?.data ?? undefined,
-    //     message,
-    //   });
-    // } catch {
-    //   // ignore
-    // }
+    const responseData = error.response?.data as
+      | { detail?: unknown; message?: unknown; error?: unknown }
+      | undefined;
+    const detail = responseData?.detail;
+    const validationMessage =
+      Array.isArray(detail) && detail.length > 0
+        ? (detail[0] as { msg?: unknown })?.msg
+        : detail;
+    const message =
+      (typeof responseData?.message === "string" && responseData.message) ||
+      (typeof responseData?.error === "string" && responseData.error) ||
+      (typeof validationMessage === "string" && validationMessage) ||
+      (error.request
+        ? "Network error. Please check your connection."
+        : error.message || "Something went wrong.");
 
     return Promise.reject(new Error(message));
   },
 );
 
 export default api;
-
-export { generateToken } from "./auth-service";
+export { generateToken, refreshToken } from "./auth-service";
+export { api } from "./http-client";
 

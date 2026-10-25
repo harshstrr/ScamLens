@@ -18,7 +18,7 @@ def analyze_scan(
     body: AnalyzeRequest,
     db: Session = Depends(get_db),
     user: Account | None = Depends(optional_user),
-) -> ScanResult:
+):
     # 1. Require authentication only when saving to history
     if body.save_to_history and user is None:
         raise HTTPException(
@@ -38,19 +38,26 @@ def analyze_scan(
     # 3. Persist record if authenticated and requested
     if body.save_to_history and user is not None:
         row = ScanRecord(
-            user_id=user.id,
-            source_type=body.source_type,
-            source_url=body.source_url,
-            source_title=body.source_title,
-            content=body.text if body.save_content else None,
-            risk_level=result["risk_level"],
-            risk_score=result["risk_score"],
-            confidence=result["confidence"],
-            summary=result["summary"],
-            findings=result["findings"],
-            recommendations=result["recommendations"],
-            analysis_version=result["analysis_version"],
-        )
+    user_id=user.id,
+    source_type=body.source_type,
+    source_url=body.source_url,
+    source_title=body.source_title,
+    content=body.text if body.save_content else None,
+    verdict=result["verdict"],  # <-- Added
+    is_safe=result["is_safe"],  # <-- Added
+    primary_category=result["primary_category"],  # <-- Added
+    risk_level=result["risk_level"],
+    risk_score=result["risk_score"],
+    confidence=result["confidence"],
+    critical_indicators=result["critical_indicators"],  # <-- Added
+    scores=result["scores"],  # <-- Added
+    summary=result["summary"],
+    findings=result["findings"],
+    recommendations=result["recommendations"],
+    analysis_version=result["analysis_version"],
+    # Let database/model handle default id & created_at unless manually overriding
+)
+
 
         try:
             db.add(row)
@@ -68,7 +75,6 @@ def analyze_scan(
         source_type=body.source_type,
         source_url=body.source_url,
         source_title=body.source_title,
-        saved_to_history=saved,
         created_at=result.get("created_at", datetime.now(timezone.utc)),
         verdict=result["verdict"],
         is_safe=result["is_safe"],
@@ -120,12 +126,39 @@ def delete_all_scan(db: Session = Depends(get_db), user: Account = Depends(curre
     
     return {"status": "deleted", "count": result.rowcount}
 
-@router.get("/{scan_id}", response_model=ScanItem)
+@router.get("/{scan_id}", response_model=ScanResult)
 def get_scan(scan_id: str, db: Session = Depends(get_db), user: Account = Depends(current_user)):
-    row = db.scalar(select(ScanRecord).where(ScanRecord.id == scan_id, ScanRecord.user_id == user.id))
+    row = db.scalar(
+        select(ScanRecord).where(
+            ScanRecord.id == scan_id, 
+            ScanRecord.user_id == user.id
+        )
+    )
     if row is None:
         raise HTTPException(status_code=404, detail="Scan not found")
-    return ScanItem.model_validate(row)
+        
+    return ScanResult(
+        id=row.id,
+        source_type=row.source_type,
+        source_url=row.source_url,
+        source_title=row.source_title,
+        created_at=row.created_at,
+        verdict=row.verdict,
+        is_safe=row.is_safe,
+        primary_category=row.primary_category,
+        risk_level=row.risk_level,
+        risk_score=row.risk_score,
+        confidence=row.confidence,
+        critical_indicators=row.critical_indicators,
+        scores=row.scores,
+        summary=row.summary,
+        findings=row.findings,
+        recommendations=row.recommendations,
+        analysis_version=row.analysis_version,
+    )
+
+    
+    
 
 @router.delete("/{scan_id}")
 def delete_scan(scan_id: str, db: Session = Depends(get_db), user: Account = Depends(current_user)):

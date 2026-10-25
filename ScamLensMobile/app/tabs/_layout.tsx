@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
-import { Tabs } from 'expo-router';
-import { View, Modal, Pressable, Text, TouchableWithoutFeedback } from 'react-native';
+import { router, Tabs } from 'expo-router';
+import { View, Modal, Pressable, TouchableWithoutFeedback, useColorScheme } from 'react-native';
 import * as LucideIcons from 'lucide-react-native';
 
 const SafeIcon = ({ name, color, size, strokeWidth }: any) => {
@@ -29,26 +29,27 @@ const NoFeedbackTabButton = (props: any) => {
 
 export default function TabLayout() {
   const [menu, setMenu] = useState(false);
+  const isDark = useColorScheme() === 'dark';
 
   const handleChooseMedia = () => {
-    console.log("Media");
     setMenu(false);
+    router.push({ pathname: "/tabs/scan", params: { mode: "media" } });
   };
 
   const handleChooseCamera = () => {
-    console.log("Camera");
     setMenu(false);
+    router.push({ pathname: "/tabs/scan", params: { mode: "camera" } });
   };
 
   return (
-    <View className="flex-1 bg-[#FAFAFC]">
+    <View className="flex-1 bg-[#FAFAFC] dark:bg-[#111113]">
       <Tabs
         id="main-tabs"
         screenOptions={{
           headerShown: false,
           animation: 'none',
-          tabBarActiveTintColor: '#1C1C1E',
-          tabBarInactiveTintColor: '#AEAEB2',
+          tabBarActiveTintColor: isDark ? '#F5F5F7' : '#1C1C1E',
+          tabBarInactiveTintColor: isDark ? '#71717A' : '#AEAEB2',
           tabBarButton: (props) => <NoFeedbackTabButton {...props} />,
           tabBarItemStyle: {
             flex: 1,
@@ -74,7 +75,7 @@ export default function TabLayout() {
             flexDirection: 'row',
             alignItems: 'center',
             justifyContent: 'space-evenly',
-            backgroundColor: '#FFFFFF',
+            backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
             borderRadius: 30,
             height: 72,
             paddingBottom: 8,
@@ -109,10 +110,10 @@ export default function TabLayout() {
                   opacity: 1,
                 }}
               >
-                <View className="w-20 h-20 bg-[#1C1C1E] items-center justify-center rounded-full -mt-14 shadow-lg ">
+                <View className="w-20 h-20 bg-[#1C1C1E] items-center justify-center rounded-full -mt-14 shadow-lg dark:bg-[#F5F5F7]">
                   <SafeIcon 
                     name={menu ? "X" : "ScanLine"} 
-                    color="#FFFFFF" 
+                    color={isDark ? "#111113" : "#FFFFFF"}
                     size={24} 
                     strokeWidth={2.2} 
                   />
@@ -147,18 +148,18 @@ export default function TabLayout() {
               <View className="items-center">
                 <Pressable 
                   onPress={handleChooseMedia}
-                  className="w-[4.5rem] h-[4.5rem] bg-white rounded-full items-center justify-center shadow-lg active:opacity-80"
+                  className="w-[4.5rem] h-[4.5rem] bg-white rounded-full items-center justify-center shadow-lg active:opacity-80 dark:bg-[#2C2C2E]"
                 >
-                  <SafeIcon name="Image" color="#1C1C1E" size={26} strokeWidth={2} />
+                  <SafeIcon name="Image" color={isDark ? "#F5F5F7" : "#1C1C1E"} size={26} strokeWidth={2} />
                 </Pressable>
               </View>
 
               <View className="items-center">
                 <Pressable 
                   onPress={handleChooseCamera}
-                  className="w-[4.5rem] h-[4.5rem] bg-white rounded-full items-center justify-center shadow-lg active:opacity-80"
+                  className="w-[4.5rem] h-[4.5rem] bg-white rounded-full items-center justify-center shadow-lg active:opacity-80 dark:bg-[#2C2C2E]"
                 >
-                  <SafeIcon name="Camera" color="#1C1C1E" size={26} strokeWidth={2} />
+                  <SafeIcon name="Camera" color={isDark ? "#F5F5F7" : "#1C1C1E"} size={26} strokeWidth={2} />
                 </Pressable>
               </View>
             </View>

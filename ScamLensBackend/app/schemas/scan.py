@@ -59,7 +59,6 @@ class ScanResult(BaseModel):
 
     analysis_version: str
     created_at: datetime
-    saved_to_history: bool = False
 
 class ScanItem(BaseModel):
     id: str

@@ -2,9 +2,13 @@ import { Stack } from "expo-router";
 import * as SplashScreen from 'expo-splash-screen';
 import "../global.css";
 import { useEffect } from "react";
+import { View, useColorScheme } from "react-native";
+import { StatusBar } from "expo-status-bar";
 
 SplashScreen.preventAutoHideAsync();
 export default function RootLayout() {
+  const colorScheme = useColorScheme();
+
   useEffect(() => {
     async function prepare() {
       try {
@@ -19,5 +23,10 @@ export default function RootLayout() {
     prepare();
   }, []);
 
-  return <Stack id="root" screenOptions={{ headerShown: false }} />;
+  return (
+    <View className={colorScheme === "dark" ? "dark flex-1" : "flex-1"}>
+      <StatusBar style={colorScheme === "dark" ? "light" : "dark"} />
+      <Stack id="root" screenOptions={{ headerShown: false }} />
+    </View>
+  );
 }

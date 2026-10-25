@@ -23,6 +23,15 @@ In the output, you'll find options to open the app in a
 - [iOS simulator](https://docs.expo.dev/workflow/ios-simulator/)
 - [Expo Go](https://expo.dev/go), a limited sandbox for trying out app development with Expo
 
+### Camera and screenshot scanning
+
+Image text extraction uses Google ML Kit and requires a native development
+build; it is not available in Expo Go. After installing dependencies, rebuild
+and launch the app with `npx expo run:android` or `npx expo run:ios`. Persistent
+key-value data uses Expo SQLite instead of the missing AsyncStorage native
+bridge. The image picker opens the system camera or photo library, extracts
+text on-device, and submits that text for analysis.
+
 You can start developing by editing the files inside the **src/app** directory. This project uses [file-based routing](https://docs.expo.dev/router/introduction).
 
 ## Get a fresh project

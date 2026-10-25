@@ -1,7 +1,7 @@
 
 package com.harsh.ScamLens.quickscan
 
-
+import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -11,69 +11,218 @@ data class ScanVerdict(
     val risk: String,
     val summary: String,
     val reasons: List<String>,
-    val recommendation: String
+    val recommendation: String,
+    val scanId: String? = null,
+    val riskScore: Int? = null,
+    val verdict: String? = null
 )
 
 internal object ScanAnalysis {
-    // Set this to your HTTPS backend endpoint; never embed a private server secret here.
-    private const val ANALYSIS_ENDPOINT = "https://perch-carnation-improving.ngrok-free.dev/scan"
 
-    fun analyze(text: String): ScanVerdict {
-        if (ANALYSIS_ENDPOINT.isNotBlank()) {
-            try { return callApi(text) }
-            catch (e: Exception) { QuickScanLog.e("Analysis API failed; using demo fallback", e) }
-        }
-        return heuristic(text)
-    }
+    private const val BASE_URL =
+        "https://scamlens-76sd.onrender.com/api/v1"
 
-    private fun callApi(text: String): ScanVerdict {
-        val conn = URL(ANALYSIS_ENDPOINT).openConnection() as HttpURLConnection
-        try {
-            conn.requestMethod = "POST"
-            conn.connectTimeout = 8000
-            conn.readTimeout = 12000
-            conn.doOutput = true
-            conn.setRequestProperty("Content-Type", "application/json; charset=utf-8")
-            conn.setRequestProperty("Accept", "application/json")
-            val payload = JSONObject().put("text", text.take(12000))
-                .put("source", "android_quick_scan").toString()
-            conn.outputStream.use { it.write(payload.toByteArray(Charsets.UTF_8)) }
-            val status = conn.responseCode
-            val stream = if (status in 200..299) conn.inputStream else conn.errorStream
-            val raw = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
-            if (status !in 200..299) error("API returned HTTP $status")
-            val obj = JSONObject(raw)
-            val arr = obj.optJSONArray("reasons") ?: JSONArray()
-            val reasons = (0 until arr.length()).map { arr.optString(it) }.filter { it.isNotBlank() }
-            val risk = obj.optString("risk", "unknown").lowercase()
-            return ScanVerdict(
-                if (risk in listOf("low", "medium", "high", "unknown")) risk else "unknown",
-                obj.optString("summary", "Analysis completed."),
-                reasons,
-                obj.optString("recommendation", "Verify independently through an official channel.")
+    private const val ANALYSIS_ENDPOINT = "$BASE_URL/scans/analyze"
+    private const val REFRESH_ENDPOINT = "$BASE_URL/auth/refresh"
+
+    fun analyze(context: Context, text: String): ScanVerdict {
+        require(text.isNotBlank()) { "Text to analyze cannot be empty." }
+
+        val credentials = try {
+            QuickScanCredentials.get(context)
+        } catch (e: Exception) {
+            QuickScanLog.e("Unable to read secure credentials", e)
+            throw IllegalStateException(
+                "Unable to access secure credentials. Open ScamLens and sign in again."
             )
-        } finally { conn.disconnect() }
+        }
+
+        // No saved credentials: preserve guest scanning.
+        if (credentials == null) {
+            return callAnalysisApi(
+                text = text.take(40000),
+                accessToken = null,
+                saveToHistory = false,
+                saveToContent = false
+            )
+        }
+
+        // Refresh first because the access token may have expired.
+        val refreshed = try {
+            refreshCredentials(context, credentials.secretKey)
+        } catch (e: Exception) {
+            QuickScanLog.e("Credential refresh failed", e)
+            throw IllegalStateException(
+                "Your ScamLens session could not be refreshed. Open the app and sign in again."
+            )
+        }
+
+        return callAnalysisApi(
+            text = text.take(40000),
+            accessToken = refreshed.first,
+            saveToHistory = true,
+            saveToContent = true
+        )
     }
 
-    // Demo only: keyword checks cannot reliably determine whether a message is a scam.
-    private fun heuristic(text: String): ScanVerdict {
-        val lower = text.lowercase()
-        val reasons = mutableListOf<String>()
-        if (listOf("urgent", "immediately", "within 24 hours", "blocked", "suspended", "last warning").any { it in lower })
-            reasons += "Urgent or threatening language"
-        if (listOf("otp", "one time password", "pin", "password", "cvv", "share your code").any { it in lower })
-            reasons += "Sensitive credential or code request"
-        if (listOf("claim reward", "you won", "prize", "lottery", "free gift").any { it in lower })
-            reasons += "Unexpected reward or prize claim"
-        if (Regex("""https?://|www\.""", RegexOption.IGNORE_CASE).containsMatchIn(text))
-            reasons += "Contains a link that should be verified"
-        val risk = when (reasons.size) { 0 -> "unknown"; 1, 2 -> "medium"; else -> "high" }
-        return ScanVerdict(
-            risk,
-            if (reasons.isEmpty()) "No obvious keyword indicator was found. This does not prove the message is safe."
-            else "Potential warning signs were found. This is only a preliminary check.",
-            reasons.ifEmpty { listOf("No obvious keyword indicators; message context was not verified") },
-            "Never share OTPs, PINs, passwords, or payment details. Verify independently through an official app or website."
-        )
+    private fun refreshCredentials(
+        context: Context,
+        secretKey: String
+    ): Pair<String, String> {
+        val connection =
+            URL(REFRESH_ENDPOINT).openConnection() as HttpURLConnection
+
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 15000
+            connection.readTimeout = 20000
+            connection.doOutput = true
+            connection.setRequestProperty(
+                "Content-Type",
+                "application/json; charset=utf-8"
+            )
+            connection.setRequestProperty("Accept", "application/json")
+
+            val payload = JSONObject().put("secret_key", secretKey)
+
+            connection.outputStream.use { output ->
+                output.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+
+            val status = connection.responseCode
+            val stream = if (status in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream
+            }
+
+            val raw = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+
+            if (status !in 200..299) {
+                QuickScanLog.e("Refresh API returned HTTP $status: ${raw.take(300)}")
+                throw IllegalStateException("Refresh failed (HTTP $status)")
+            }
+
+            val response = JSONObject(raw)
+            val accessToken = response.getString("access_token")
+            val rotatedSecretKey = response.getString("secret_key")
+
+            require(accessToken.isNotBlank() && rotatedSecretKey.isNotBlank()) {
+                "Refresh response did not contain valid credentials."
+            }
+
+            // Persist the rotated key before proceeding with the scan.
+            QuickScanCredentials.save(
+                context,
+                accessToken,
+                rotatedSecretKey
+            )
+
+            return accessToken to rotatedSecretKey
+        } finally {
+            connection.disconnect()
+        }
+    }
+
+    private fun callAnalysisApi(
+        text: String,
+        accessToken: String?,
+        saveToHistory: Boolean,
+        saveToContent: Boolean
+    ): ScanVerdict {
+        val connection =
+            URL(ANALYSIS_ENDPOINT).openConnection() as HttpURLConnection
+
+        try {
+            connection.requestMethod = "POST"
+            connection.connectTimeout = 15000
+            connection.readTimeout = 20000
+            connection.doOutput = true
+
+            connection.setRequestProperty(
+                "Content-Type",
+                "application/json; charset=utf-8"
+            )
+            connection.setRequestProperty("Accept", "application/json")
+
+            if (!accessToken.isNullOrBlank()) {
+                connection.setRequestProperty(
+                    "Authorization",
+                    "Bearer $accessToken"
+                )
+            }
+
+            val payload = JSONObject()
+                .put("text", text)
+                .put("source_type", "quick_scan")
+                .put("source_title", "ScamLens Quick Scan")
+                .put("save_to_history", saveToHistory)
+                .put("save_content", saveToContent)
+
+            connection.outputStream.use { output ->
+                output.write(payload.toString().toByteArray(Charsets.UTF_8))
+            }
+
+            val status = connection.responseCode
+            val stream = if (status in 200..299) {
+                connection.inputStream
+            } else {
+                connection.errorStream
+            }
+
+            val raw = stream?.bufferedReader()?.use { it.readText() }.orEmpty()
+
+            if (status !in 200..299) {
+                QuickScanLog.e("Scan API returned HTTP $status: ${raw.take(500)}")
+                throw IllegalStateException("Scan request failed (HTTP $status)")
+            }
+
+            val response = JSONObject(raw)
+            val findings = response.optJSONArray("findings") ?: JSONArray()
+
+            val reasons = (0 until findings.length()).mapNotNull { index ->
+                val finding = findings.optJSONObject(index)
+                    ?: return@mapNotNull null
+
+                val title = finding.optString("title", "").trim()
+                val detail = finding.optString("detail", "").trim()
+
+                when {
+                    title.isBlank() -> detail.takeIf { it.isNotBlank() }
+                    detail.isBlank() -> title
+                    else -> "$title: $detail"
+                }
+            }
+
+            val recommendations =
+                response.optJSONArray("recommendations") ?: JSONArray()
+
+            val recommendationText = (0 until recommendations.length())
+                .map { recommendations.optString(it) }
+                .filter { it.isNotBlank() }
+                .joinToString("\n")
+
+            return ScanVerdict(
+                risk = response.optString("risk_level", "unknown").lowercase(),
+                summary = response.optString("summary", "Analysis completed."),
+                reasons = reasons.ifEmpty {
+                    listOf("No specific indicators were returned.")
+                },
+                recommendation = recommendationText.ifBlank {
+                    "Verify independently through an official channel."
+                },
+                scanId = response.optString("id")
+                    .takeIf { it.isNotBlank() && it != "null" },
+                riskScore = if (response.has("risk_score")) {
+                    response.optInt("risk_score")
+                } else {
+                    null
+                },
+                verdict = response.optString("verdict")
+                    .takeIf { it.isNotBlank() }
+            )
+        } finally {
+            connection.disconnect()
+        }
     }
 }

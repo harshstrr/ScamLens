@@ -13,7 +13,7 @@ Shared API starter for the ScamLens Android app and browser extension.
 - Docker Compose for PostgreSQL and API
 
 ## Important limitations
-This is a starter, not production-ready security software. The analyzer is a simple heuristic prototype, not an AI model or threat-intelligence service. Low/inconclusive does not mean safe. Logout revocation, rate limiting, provider integrations, deployment hardening, full guest history import, and client integration are not implemented yet.
+This is a starter, not production-ready security software. The analyzer is a simple heuristic prototype, not an AI model or threat-intelligence service. Low/inconclusive does not mean safe. Logout revocation, rate limiting, provider integrations, deployment hardening, full guest history import, and browser-extension integration are not implemented yet.
 
 ## Quick start (Python 3.11+)
 1. Copy `.env.example` to `.env` and set a long random `JWT_SECRET` and `GOOGLE_CLIENT_ID` if using Google sign-in.

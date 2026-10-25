@@ -17,7 +17,8 @@
       },
       "googleServicesFile": "./google-services.json",
       "predictiveBackGestureEnabled": false,
-      "package": "com.harsh.ScamLens"
+      "package": "com.harsh.ScamLens",
+      "permissions": ["CAMERA"]
     },
     "web": {
       "output": "server",
@@ -26,6 +27,14 @@
     "plugins": [
       "@react-native-google-signin/google-signin",
       [
+        "expo-image-picker",
+        {
+          "photosPermission": "ScamLens uses the selected image to extract text for a scan.",
+          "cameraPermission": "ScamLens uses the camera to capture an image for text extraction.",
+          "microphonePermission": false
+        }
+      ],
+      [
         "expo-splash-screen",
         {
           "backgroundColor": "#000000",
@@ -33,11 +42,12 @@
           "imageWidth": 120,
           "resizeMode": "contain",
           "dark": {
-            "backgroundColor": "#2C2C2C",
+            "backgroundColor": "#ffffff",
             "image": "./assets/images/dark/splash-icon.png"
           }
         }
-      ]
+      ],
+      "expo-sqlite"
     ],
     "experiments": {
       "typedRoutes": true,
