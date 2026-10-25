@@ -8,7 +8,7 @@ from urllib.error import HTTPError, URLError
 from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
-VERSION = "ScamLens Prediction v2.1"
+VERSION = "ScamLens Prediction v2.2"
 logger = logging.getLogger(__name__)
 
 EXTERNAL_MODEL_URL = "https://perch-carnation-improving.ngrok-free.dev/api/analyze"
@@ -22,6 +22,14 @@ CONTENT_PATTERNS = [
         "high",
         50,
         "Threatens severe legal, financial, or regulatory penalties to force irrational obedience.",
+    ),
+    (
+        "delivery_fee_fee_hold",
+        "Fake Delivery / Package Fee Lure",
+        r"\b(international delivery service|attempted delivery|parcel|package is currently being held|customs regulations|shipping fee balance|distribution center|delivery preferences|post-delivery)\b",
+        "high",
+        50,
+        "Lures victim into paying fake delivery or clearance fees to obtain credentials or money.",
     ),
     (
         "account_takeover_threat",
@@ -58,7 +66,7 @@ CONTENT_PATTERNS = [
     (
         "urgent_call_to_action",
         "Extreme Urgency & Deadlines",
-        r"\b(act immediately|urgent action required|within (?:15|30|60|\d+) (?:mins?|minutes?|hours?)|session expires|final (?:reminder|notice)|immediately update|urgent kyc)\b",
+        r"\b(act immediately|urgent action required|within (?:15|30|48|60|\d+) (?:mins?|minutes?|hours?)|session expires|final (?:reminder|notice)|immediately update|urgent kyc|returned to the sender)\b",
         "medium",
         35,
         "Manufactured panic and tight deadlines to prevent second-guessing.",
@@ -66,7 +74,7 @@ CONTENT_PATTERNS = [
     (
         "unusual_payment_demands",
         "Non-Standard or Untraceable Payment",
-        r"\b(gift card|crypto transfer|bitcoin address|usdt trc20|western union|moneygram|wire transfer|processing fee required|security deposit to release)\b",
+        r"\b(gift card|crypto transfer|bitcoin address|usdt trc20|western union|moneygram|wire transfer|processing fee required|security deposit to release|outstanding shipping fee)\b",
         "high",
         40,
         "Requests payment via non-reversible, anonymous, or high-risk transfer vectors.",
@@ -127,10 +135,9 @@ TARGET_BRANDS = [
     "binance", "coinbase", "kraken", "metamask", "trustwallet",
     "apple", "icloud", "microsoft", "office365", "outlook", "google", "gmail",
     "amazon", "netflix", "fedex", "dhl", "ups", "usps", "indiapost",
-    "airtel", "jio", "bsnl", "vodafone",
+    "bluedart", "delhivery", "airtel", "jio", "bsnl", "vodafone",
 ]
 
-# Extracts standard http(s) URLs as well as bracketed or bare domain patterns
 EXTRACT_RE = re.compile(
     r"(?:https?://[^\s<>'\"]+|(?:\b|\bwww\.)[a-z0-9][a-z0-9\-\.]{1,254}\.[a-z]{2,10}(?:/[^\s<>'\"]*)?)",
     re.IGNORECASE,
@@ -145,6 +152,7 @@ CRITICAL_CODES = {
     "threat_authority_impersonation",
     "account_takeover_threat",
     "bank_kyc_pan_alert",
+    "delivery_fee_fee_hold",
     "suspicious_domain_lure",
 }
 
@@ -171,7 +179,6 @@ def is_ip_host(hostname: str) -> bool:
 
 
 def clean_and_normalize_url(raw: str) -> tuple[str, str, str]:
-    """Cleans punctuation/brackets and ensures valid parsing."""
     cleaned = raw.strip(" []()<>{}\"',;:!?")
     if not re.match(r"^https?://", cleaned, re.IGNORECASE):
         test_url = f"https://{cleaned}"
@@ -239,10 +246,8 @@ def inspect_url(raw_url: str) -> list[dict]:
     labels = hostname.split(".")
     registered_part = ".".join(labels[-2:]) if len(labels) >= 2 else hostname
 
-    # Check for brand spoofing inside the domain name or subdomains
     for brand in TARGET_BRANDS:
         if brand in hostname:
-            # Matches hyphenated spoofing like bofa-security-update-verification.com
             is_hyphen_spoof = f"{brand}-" in hostname or f"-{brand}" in hostname
             is_subdomain_spoof = brand not in registered_part
             if is_hyphen_spoof or is_subdomain_spoof:
@@ -255,13 +260,12 @@ def inspect_url(raw_url: str) -> list[dict]:
                 })
                 break
 
-    # Flag common phishing buzzwords in the domain label
-    phish_keywords = ("verification", "security-update", "verify-account", "login-help", "account-alert")
+    phish_keywords = ("verification", "security-update", "verify-account", "delivery-tracking", "post-delivery", "tracking-update")
     if any(k in hostname for k in phish_keywords):
         findings.append({
             "code": "suspicious_domain_lure",
-            "title": "Suspicious Domain Security Lure",
-            "detail": f"Domain '{hostname}' contains suspicious credential-phishing keywords.",
+            "title": "Suspicious Domain / Phishing Lure",
+            "detail": f"Domain '{hostname}' contains suspicious lure keywords.",
             "severity": "high",
             "points": 40,
         })
@@ -317,7 +321,30 @@ def call_remote_scam_model(text: str) -> dict | None:
     return None
 
 
-def analyze(text: str, source_url: str | None = None) -> dict:
+def normalize_verdict(raw_verdict: str | None, risk_score: int) -> str:
+    """Ensures verdict strictly satisfies FastAPI Pydantic Literal validation."""
+    if not raw_verdict:
+        if risk_score >= 70:
+            return "SCAM_OR_FRAUD_DETECTED"
+        if risk_score >= 40:
+            return "SPAM_OR_HIGH_RISK"
+        if risk_score >= 15:
+            return "LOW_RISK_CONTENT"
+        return "LEGITIMATE_CONTENT"
+
+    v = str(raw_verdict).strip().lower()
+    if v in ("fraud", "scam", "scam_or_fraud_detected", "high_risk"):
+        return "SCAM_OR_FRAUD_DETECTED"
+    if v in ("spam", "spam_or_high_risk", "medium_risk"):
+        return "SPAM_OR_HIGH_RISK"
+    if v in ("low", "low_risk", "low_risk_content"):
+        return "LOW_RISK_CONTENT"
+    if v in ("safe", "legitimate", "legitimate_content"):
+        return "LEGITIMATE_CONTENT"
+    return "SCAM_OR_FRAUD_DETECTED" if risk_score >= 70 else "LEGITIMATE_CONTENT"
+
+
+def analyze(text: str, source_url: str | None = None, source_type: str = "message") -> dict:
     cleaned_text = (text or "").strip()[:40000]
     findings = []
     has_spam_trigger = False
@@ -338,7 +365,7 @@ def analyze(text: str, source_url: str | None = None) -> dict:
             else:
                 has_fraud_trigger = True
 
-    # 2. Extract and inspect URLs or embedded hostnames
+    # 2. Extract and inspect URLs
     raw_candidates = EXTRACT_RE.findall(cleaned_text)
     urls = list(dict.fromkeys(raw_candidates))
     if source_url:
@@ -364,7 +391,7 @@ def analyze(text: str, source_url: str | None = None) -> dict:
     else:
         risk_score = min(raw_score, 100)
 
-    # 5. Core determination
+    # 5. Core determinations
     if critical_indicators or risk_score >= 70:
         risk_level = "high"
         verdict = "SCAM_OR_FRAUD_DETECTED"
@@ -390,53 +417,73 @@ def analyze(text: str, source_url: str | None = None) -> dict:
         summary = "No scam indicators were identified. This does not guarantee the content is safe."
         primary_category = "legitimate"
 
-    # 6. External model fall-forward & priority override
-    model_res = call_remote_scam_model(cleaned_text)
-    if model_res:
-        m_verdict = model_res.get("verdict")
-        m_is_safe = model_res.get("is_safe")
-        m_score = model_res.get("risk_score")
-        m_category = model_res.get("primary_category")
-        m_risk_level = model_res.get("risk_level")
-
-        if m_is_safe is not None and m_is_safe != (risk_level == "safe"):
-            if not m_is_safe:
-                verdict = m_verdict or "SCAM_OR_FRAUD_DETECTED"
-                risk_level = m_risk_level or "high"
-                risk_score = max(risk_score, int(m_score) if m_score is not None else 85)
-                primary_category = m_category or "fraud"
-                summary = "Flagged as high-risk fraudulent content by the deep scam detection model."
-            else:
-                if not critical_indicators:
-                    verdict = m_verdict or "LEGITIMATE_CONTENT"
-                    risk_level = "safe"
-                    risk_score = min(risk_score, int(m_score) if m_score is not None else 10)
-                    primary_category = "legitimate"
-                    summary = "Evaluated as safe content by the scam analysis engine."
-        elif m_verdict and m_verdict != verdict:
-            verdict = m_verdict
-            if m_risk_level:
-                risk_level = m_risk_level
-
-        if m_score is not None and isinstance(m_score, (int, float)):
-            risk_score = int(max(risk_score, m_score)) if risk_level != "safe" else int(m_score)
-            risk_score = max(0, min(100, risk_score))
-
     fraud_score = round(min(risk_score / 100.0, 1.0), 4) if primary_category == "fraud" else 0.0
     spam_score = round(min(risk_score / 100.0, 1.0), 4) if primary_category == "spam" else 0.0
     legitimate_score = round(max(0.0, 1.0 - (risk_score / 100.0)), 4)
+
+    # 6. External model fall-forward and schema normalization
+    model_res = call_remote_scam_model(cleaned_text)
+    if model_res:
+        m_scores = model_res.get("scores") or {}
+        m_fraud_score = m_scores.get("fraud") or m_scores.get("fraud_score")
+        m_spam_score = m_scores.get("spam") or m_scores.get("spam_score")
+        m_legit_score = m_scores.get("legitimate") or m_scores.get("legitimate_score")
+
+        m_is_safe = model_res.get("is_safe")
+        raw_m_risk_level = str(model_res.get("risk_level", "")).lower()
+
+        # Handle score extraction
+        if m_fraud_score is not None:
+            fraud_score = round(float(m_fraud_score), 4)
+            if fraud_score > 0.5:
+                risk_score = max(risk_score, int(fraud_score * 100))
+        if m_spam_score is not None:
+            spam_score = round(float(m_spam_score), 4)
+        if m_legit_score is not None:
+            legitimate_score = round(float(m_legit_score), 4)
+
+        # Normalize risk level to literal: 'high' | 'medium' | 'low' | 'safe'
+        if raw_m_risk_level in ("high", "medium", "low", "safe"):
+            risk_level = raw_m_risk_level
+        elif risk_score >= 70:
+            risk_level = "high"
+        elif risk_score >= 40:
+            risk_level = "medium"
+        elif risk_score >= 15:
+            risk_level = "low"
+        else:
+            risk_level = "safe"
+
+        # Apply model verdict override
+        verdict = normalize_verdict(model_res.get("verdict", ), risk_score)
+
+        if m_is_safe is not None:
+            if not m_is_safe:
+                verdict = "SCAM_OR_FRAUD_DETECTED"
+                risk_level = "high" if risk_level == "safe" else risk_level
+                primary_category = "fraud"
+                summary = "Flagged as high-risk fraudulent content by the deep scam detection model."
+            elif not critical_indicators:
+                verdict = "LEGITIMATE_CONTENT"
+                risk_level = "safe"
+                primary_category = "legitimate"
+                summary = "Evaluated as safe content by the scam analysis engine."
+
+    # Validate final normalized verdict
+    verdict = normalize_verdict(verdict, risk_score)
+    is_safe = risk_level == "safe"
 
     recommendations = []
     if risk_level == "high" or critical_indicators:
         recommendations.extend([
             "Never share OTPs, PINs, passwords, CVVs, or recovery phrases.",
-            "Do not open suspicious links or install APKs or software requested by an unknown sender.",
+            "Do not open suspicious links or pay unexpected clearance or shipping fees.",
             "Verify requests through the official app, website, or published support number.",
         ])
     elif risk_level == "medium":
         recommendations.extend([
-            "Avoid replying to unsolicited offers, prize claims, or unexpected job messages.",
-            "Do not use links in unsolicited messages to verify personal information.",
+            "Avoid replying to unsolicited offers, prize claims, or unexpected delivery notices.",
+            "Do not use links in unsolicited messages to verify personal or parcel information.",
         ])
     else:
         recommendations.append(
@@ -444,12 +491,15 @@ def analyze(text: str, source_url: str | None = None) -> dict:
         )
 
     now = datetime.now(timezone.utc)
+
+    # Return exactly matching Pydantic response schema
     return {
+        "source_type": source_type,
         "verdict": verdict,
-        "is_safe": risk_level == "safe",
+        "is_safe": is_safe,
         "primary_category": primary_category,
         "risk_level": risk_level,
-        "risk_score": risk_score,
+        "risk_score": int(risk_score),
         "confidence": confidence,
         "scores": {
             "fraud_score": fraud_score,
