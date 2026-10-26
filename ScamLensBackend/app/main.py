@@ -9,9 +9,12 @@ settings = get_settings()
 
 app = FastAPI(title=settings.app_name, version="0.2.0", description="Shared ScamLens analysis and history API. Heuristic analysis is a prototype.")
 
-origins = [x.strip() for x in settings.cors_origins.split(",") if x.strip()]
-if origins:
-    app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "DELETE", "OPTIONS"], allow_headers=["Authorization", "Content-Type"])
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"], 
+    allow_methods=["GET", "POST", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type"]
+)
 
 @app.on_event("startup")
 def startup():
