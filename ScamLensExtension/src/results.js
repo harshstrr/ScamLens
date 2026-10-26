@@ -1,9 +1,10 @@
-import { analyze, sendFeedback } from "./api.js";
+import { analyze } from "./api.js";
 import { recordScan } from "./history-store.js";
 import { analyzeLocally } from "./analyzer.js";
+import { normalize } from "./normalize.js";
 import { initTheme } from "./theme.js";
 import { hydrateIcons, icon } from "./icons.js";
-import { $, el, verdictBadge } from "./ui.js";
+import { $, el } from "./ui.js";
 
 let payload = null;
 let current = null;
@@ -21,29 +22,92 @@ function showState({ glyph = "info", title, text, retry = false, local = false, 
   show("state");
 }
 
+function normalizeReport(raw) {
+  const sourceType = raw?.kind || raw?.source_type;
+  const kind = sourceType === "quick_scan" ? "url"
+    : sourceType === "website" ? "website"
+      : sourceType === "message" || sourceType === "image_ocr" ? "message"
+        : sourceType || "website";
+  return normalize(raw, {
+    kind,
+    url: raw?.target || raw?.source_url || "",
+    title: raw?.title || raw?.source_title || "",
+  }, raw?.source || "api");
+}
+
+/* ───────── Rendering ───────── */
+
 function formatDate(iso) {
   const d = new Date(iso);
+  if (isNaN(d)) return "";
   const date = new Intl.DateTimeFormat("en-GB", { day: "2-digit", month: "short", year: "numeric" }).format(d);
   const time = new Intl.DateTimeFormat("en-GB", { hour: "2-digit", minute: "2-digit", hour12: false }).format(d);
   return `${date} · ${time}`;
 }
 
-function render(r) {
+const SVG_NS = "http://www.w3.org/2000/svg";
+function gaugeSvg(score, level) {
+  const R = 42, C = 2 * Math.PI * R;
+  const pct = Math.max(0, Math.min(100, score ?? 0));
+  const svg = document.createElementNS(SVG_NS, "svg");
+  svg.setAttribute("viewBox", "0 0 100 100");
+  svg.setAttribute("aria-hidden", "true");
+  const mk = (cls, extra = {}) => {
+    const c = document.createElementNS(SVG_NS, "circle");
+    c.setAttribute("cx", 50); c.setAttribute("cy", 50); c.setAttribute("r", R);
+    c.setAttribute("class", cls);
+    for (const [k, v] of Object.entries(extra)) c.setAttribute(k, v);
+    return c;
+  };
+  svg.append(
+    mk("track"),
+    mk(`bar ${level}`, { "stroke-dasharray": `${(pct / 100) * C} ${C}`, transform: "rotate(-90 50 50)" })
+  );
+  return svg;
+}
+
+function render(raw) {
+  const r = normalizeReport(raw);
   current = r;
+
   const noun = r.kind === "website" ? "Page" : r.kind === "url" ? "Link" : "Message";
   $("eyebrow").textContent = `${noun} assessment${r.source === "local" ? " / on-device check" : ""}`;
   $("date").textContent = formatDate(r.analyzedAt);
   $("date").dateTime = r.analyzedAt;
   document.title = `ScamLens · ${r.title}`;
 
-  $("title").textContent = r.title;
-  const url = $("url");
-  url.hidden = !r.target;
-  url.textContent = r.target;
-  $("badge-slot").replaceChildren(verdictBadge(r));
-
+  // Hero
+  $("hero").dataset.level = r.level;
+  const gauge = $("gauge");
+  gauge.replaceChildren();
+  if (r.score != null) {
+    gauge.hidden = false;
+    gauge.setAttribute("aria-label", `Risk score ${r.score} out of 100`);
+    gauge.append(gaugeSvg(r.score, r.level), el("div", "num", String(r.score)), el("div", "of", "/ 100"));
+  } else {
+    gauge.hidden = true;
+  }
+  $("badge-slot").replaceChildren(el("span", `pill ${r.level}`, r.label));
   $("notice-title").textContent = r.headline;
   $("notice-text").textContent = r.summary;
+
+  const chips = $("chips");
+  chips.replaceChildren();
+  if (r.confidence) chips.append(el("span", "chip", `Confidence: ${r.confidence}`));
+  if (r.findings.length) chips.append(el("span", "chip", `${r.findings.length} warning sign${r.findings.length > 1 ? "s" : ""}`));
+  if (r.version) chips.append(el("span", "chip mono", r.version));
+
+  // Subject
+  $("title").textContent = r.title;
+  const urlWrap = $("url-wrap");
+  const url = $("url");
+  urlWrap.hidden = !r.target;
+  url.textContent = r.target;
+  url.classList.add("clamp");
+  const toggle = $("url-toggle");
+  toggle.hidden = (r.target || "").length < 110;
+  toggle.textContent = "Show full address";
+
   $("hint").textContent = r.kind === "website"
     ? "Exact page text below. Explanations are interpretations, not verified threat intelligence."
     : "Exact text below. Explanations are interpretations, not verified threat intelligence.";
@@ -57,7 +121,9 @@ function render(r) {
   for (const f of r.findings) {
     const card = el("div", `card finding ${f.severity}`);
     const row = el("div", "row");
-    row.append(icon("quote", { size: 15 }), el("span", "", f.category));
+    row.append(icon("triangle-alert", { size: 15 }), el("span", "cat", f.category));
+    if (f.severity) row.append(el("span", `sev ${f.severity}`, f.severity));
+    if (typeof f.points === "number") row.append(el("span", "pts", `+${f.points}`));
     card.append(row);
     if (f.quote) card.append(el("p", "quote", `“${f.quote}”`));
     if (f.explanation) card.append(el("p", "why", f.explanation));
@@ -65,20 +131,18 @@ function render(r) {
   }
 
   // URL structure
-  $("url-card").hidden = !r.parts;
-  if (r.parts) {
+  $("url-card").hidden = !(r.parts && r.target);
+  if (r.parts && r.target) {
     const line = $("url-line");
     line.replaceChildren();
-    const bits = [r.parts.scheme, r.parts.host, r.parts.rest].filter(Boolean);
-    bits.forEach((b, i) => {
+    [r.parts.scheme, r.parts.host, r.parts.rest].filter(Boolean).forEach((b, i) => {
       if (i) line.append(el("span", "plus", "+"));
       line.append(el("span", "", b));
     });
-    const notes = $("url-notes");
-    notes.replaceChildren(...r.urlNotes.map((n) => el("p", "", n)));
+    $("url-notes").replaceChildren(...(r.urlNotes || []).map((n) => el("p", "", n)));
   }
 
-  // Domain card
+  // Domain
   const dc = $("domain-card");
   dc.hidden = !r.domain;
   if (r.domain) {
@@ -91,45 +155,33 @@ function render(r) {
     }
   }
 
+  // Score breakdown
+  const sc = $("scores-card");
+  const entries = r.scores ? [["Fraud", r.scores.fraud_score, "bad"], ["Spam", r.scores.spam_score, "warn"], ["Legitimate", r.scores.legitimate_score, "ok"]]
+    .filter(([, v]) => typeof v === "number") : [];
+  sc.hidden = !entries.length;
+  $("scores").replaceChildren(...entries.map(([name, v, tone]) => {
+    const pct = Math.round(v * 100);
+    const row = el("div", "srow");
+    const bar = el("div", "bar");
+    const fill = el("span", `fill ${tone}`);
+    fill.style.width = `${pct}%`;
+    bar.append(fill);
+    row.append(el("span", "n", name), bar, el("span", "v", `${pct}%`));
+    return row;
+  }));
+
   $("actions").replaceChildren(...r.actions.map((a) => el("li", "", a)));
   $("disclaimer").textContent = r.disclaimer;
-  resetButtons();
   show("report");
 }
 
-function resetButtons() {
-  setLabel($("copy"), "Copy report");
-  setLabel($("flag"), "Report incorrect result");
-  $("flag").disabled = false;
-}
-function setLabel(btn, text, iconName) {
-  btn.replaceChildren(...(iconName ? [icon(iconName, { size: 14 })] : []), document.createTextNode(text));
-}
-
-function reportText(r) {
-  const lines = [
-    `ScamLens ${r.kind === "website" ? "page" : r.kind === "url" ? "link" : "message"} assessment — ${formatDate(r.analyzedAt)}`,
-    r.title, r.target, "",
-    `Result: ${r.label}`, r.headline, r.summary, "",
-  ];
-  if (r.findings.length) {
-    lines.push("Why it was flagged:");
-    for (const f of r.findings) lines.push(`- ${f.category}${f.quote ? ` — “${f.quote}”` : ""}${f.explanation ? `: ${f.explanation}` : ""}`);
-    lines.push("");
-  }
-  if (r.domain) {
-    lines.push(`Domain: ${r.domain.host}`);
-    for (const c of r.domain.checks) lines.push(`- ${c.text}${c.note ? ` (${c.note})` : ""}`);
-    lines.push("");
-  }
-  lines.push("What to do:", ...r.actions.map((a, i) => `${i + 1}. ${a}`), "", r.disclaimer);
-  return lines.filter((l, i, a) => l !== undefined && !(l === "" && a[i - 1] === "")).join("\n");
-}
+/* ───────── Flow ───────── */
 
 async function run(forceLocal = false) {
   show("loading");
   try {
-    const result = forceLocal ? analyzeLocally(payload) : await analyze(payload);
+    const result = normalizeReport(forceLocal ? analyzeLocally(payload) : await analyze(payload));
     await chrome.storage.session.set({ latestScan: { payload, result } });
     await recordScan(result);
     render(result);
@@ -152,31 +204,16 @@ $("sign-in").addEventListener("click", async () => {
   btn.disabled = true;
   const res = await chrome.runtime.sendMessage({ type: "auth:signIn" }).catch(() => null);
   btn.disabled = false;
-  if (res?.ok) return run(); // signed in: run the scan again
+  if (res?.ok) return run();
   if (res && res.error) $("state-text").textContent = res.error;
 });
 $("retry").addEventListener("click", () => run());
 $("use-local").addEventListener("click", () => run(true));
 
-$("copy").addEventListener("click", async () => {
-  try {
-    await navigator.clipboard.writeText(reportText(current));
-    setLabel($("copy"), "Copied", "check");
-  } catch {
-    setLabel($("copy"), "Copy failed — select the text instead");
-  }
-  setTimeout(() => setLabel($("copy"), "Copy report"), 2200);
-});
-
-$("flag").addEventListener("click", async () => {
-  $("flag").disabled = true;
-  try {
-    const how = await sendFeedback(current);
-    setLabel($("flag"), how === "sent" ? "Thanks — feedback sent" : "Thanks — saved on this device", "check");
-  } catch (e) {
-    $("flag").disabled = false;
-    setLabel($("flag"), e.message || "Could not send feedback");
-  }
+$("url-toggle").addEventListener("click", () => {
+  const u = $("url");
+  const open = u.classList.toggle("clamp") === false;
+  $("url-toggle").textContent = open ? "Show less" : "Show full address";
 });
 
 async function main() {

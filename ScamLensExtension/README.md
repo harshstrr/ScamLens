@@ -16,7 +16,8 @@ Public one-click installation requires publishing to the Chrome Web Store or Edg
 - Nothing is scanned in the background. Light/dark mode follows the system or the saved toggle.
 
 ## ScamLens API
-The API base URL is configured in `src/config.js`; add its origin to `host_permissions` in `manifest.json`.
+The API base URL is configured in `src/config.js`. The configured Render origin is included in `host_permissions`
+in `manifest.json`; if you point the extension at another API, add that API's origin there too.
 If no analysis endpoint is configured, scans use the basic on-device analyzer.
 
 The extension calls `POST /api/v1/scans/analyze` with `source_type`, `text`, and optional `source_url` and
@@ -48,7 +49,8 @@ History supports search, filters, opening reports, deleting individual scans, an
   `GET /api/v1/scans?page=1&page_size=30`. Signed-in scans are not copied to local history.
 - Scans made while signed out are not uploaded when the user later signs in.
 
-The API uses bearer access tokens for account history. It supports `GET /api/v1/scans/{id}` and
+The API uses bearer access tokens for account history. History URLs are derived from the configured scan endpoint.
+It supports `GET /api/v1/scans/{id}` and
 `DELETE /api/v1/scans/{id}`. Clear all sends `DELETE /api/v1/scans` with no query parameters; the API deletes all
 scans belonging to the signed-in account.
 

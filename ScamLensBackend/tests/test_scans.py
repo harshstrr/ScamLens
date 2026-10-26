@@ -1,5 +1,6 @@
 import json
 from datetime import datetime, timezone
+from types import SimpleNamespace
 
 from fastapi.testclient import TestClient
 from sqlalchemy import create_engine, select
@@ -13,6 +14,19 @@ from app.core.security import create_access_token
 from app.db.base import Base
 from app.main import app
 from app.models import Account, ScanRecord
+
+
+def test_delete_all_scans_succeeds_when_history_is_empty():
+    class EmptySession:
+        def execute(self, statement):
+            return SimpleNamespace(rowcount=0)
+
+        def commit(self):
+            pass
+
+    response = scans_route.delete_all_scan(EmptySession(), SimpleNamespace(id="account-1"))
+
+    assert response == {"status": "deleted", "count": 0}
 
 
 def test_authenticated_scan_saves_model_analysis_as_json(monkeypatch):

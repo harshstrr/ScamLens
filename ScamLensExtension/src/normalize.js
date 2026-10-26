@@ -36,12 +36,23 @@ export const DEFAULT_DISCLAIMER =
 
 function verdictOf(raw) {
   const v = str(pick(raw, "verdict", "risk_level", "riskLevel", "risk", "label", "classification")).toLowerCase();
+  if (v === "scam_or_fraud_detected") return "scam";
+  if (v === "spam_or_high_risk") {
+    return str(pick(raw, "risk_level", "riskLevel")).toLowerCase() === "medium" ? "medium" : "high";
+  }
+  if (v === "low_risk_content") return "low";
+  if (v === "legitimate_content") return "safe";
   for (const [key, list] of Object.entries(SYNONYMS)) if (list.includes(v)) return key;
   const flag = pick(raw, "is_scam", "isScam", "scam");
   if (typeof flag === "boolean") return flag ? "scam" : "safe";
   const n = Number(pick(raw, "risk_score", "riskScore", "score"));
   if (Number.isFinite(n)) { const s = n <= 1 ? n * 100 : n; return s >= 85 ? "scam" : s >= 65 ? "high" : s >= 35 ? "medium" : s >= 10 ? "low" : "safe"; }
   return "unknown";
+}
+function levelOf(verdict) {
+  if (verdict === "scam" || verdict === "high") return "danger";
+  if (verdict === "medium" || verdict === "unknown") return "caution";
+  return "safe";
 }
 function severityOf(v) {
   const s = str(v).toLowerCase();
@@ -50,10 +61,12 @@ function severityOf(v) {
 function finding(f) {
   if (typeof f === "string") return { category: "Warning sign", quote: "", explanation: f.trim(), severity: "medium" };
   return {
+    code: str(pick(f, "code")),
     category: str(pick(f, "category", "title", "label", "type", "name")) || "Warning sign",
     quote: str(pick(f, "quote", "evidence", "text", "snippet", "excerpt")),
     explanation: str(pick(f, "explanation", "description", "reason", "detail", "message")),
     severity: severityOf(pick(f, "severity", "level")),
+    points: Number.isFinite(f?.points) ? f.points : undefined,
   };
 }
 function check(c) {
@@ -97,6 +110,8 @@ export function normalize(raw, payload = {}, source = "api") {
   }
 
   const analyzedAt = new Date(pick(raw, "analyzed_at", "analyzedAt", "created_at", "createdAt", "timestamp") || Date.now());
+  const scoreValue = pick(raw, "risk_score", "riskScore", "score");
+  const score = Number.isFinite(Number(scoreValue)) ? Number(scoreValue) : null;
   const title = str(pick(raw, "title", "page_title", "source_title", "name")) ||
     str(payload.title) ||
     (payload.kind === "message" ? "Selected message" : payload.kind === "url" ? "Link check" : parts?.hostname || "Page assessment");
@@ -105,12 +120,17 @@ export function normalize(raw, payload = {}, source = "api") {
   const risky = key === "scam" || key === "high" || key === "medium";
 
   return {
-    source,
+    ...raw,
+    api_verdict: raw.api_verdict || raw.verdict,
+    source: raw.source || source,
     verdict: key,
+    level: levelOf(key),
+    score,
     ...meta,
     title,
     headline: str(pick(raw, "headline", "notice_title", "noticeTitle")) || swap(meta.headline),
     summary: str(pick(raw, "summary", "notice", "description", "message")) || meta.summary,
+    version: pick(raw, "version", "analysis_version") || null,
     findings,
     target, parts, urlNotes,
     domain: host ? { host, checks } : null,

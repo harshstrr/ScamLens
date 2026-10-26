@@ -1,4 +1,4 @@
-import { API_URL, FEEDBACK_URL, REQUEST_TIMEOUT_MS, MAX_TEXT_CHARS, NGROK_BYPASS_HEADERS } from "./config.js";
+import { API_URL, FEEDBACK_URL, REQUEST_TIMEOUT_MS, MAX_TEXT_CHARS } from "./config.js";
 import { getAccessToken, getUser } from "./auth.js";
 import { normalize } from "./normalize.js";
 import { analyzeLocally } from "./analyzer.js";
@@ -59,7 +59,6 @@ export async function analyze(payload, { signal } = {}) {
     const headers = new Headers({
       "Content-Type": "application/json",
       Accept: "application/json",
-      ...NGROK_BYPASS_HEADERS,
     });
     if (t) headers.set("Authorization", `Bearer ${t}`);
     return fetch(endpoint, {

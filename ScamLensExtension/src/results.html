@@ -14,30 +14,28 @@
   <header class="topbar">
     <a class="brand" href="#" aria-label="ScamLens"><span data-icon="shield-check" data-size="22"></span>ScamLens</a>
     <nav class="nav">
-      <a class="settings-link" href="history.html">History</a>
       <a class="settings-link" href="options.html">Privacy &amp; settings <span data-icon="sliders" data-size="15"></span></a>
     </nav>
   </header>
 
-  <!-- Loading: skeleton that mirrors the report layout -->
+  <!-- Loading skeleton mirrors the report layout -->
   <main id="loading" class="skel" aria-busy="true" aria-live="polite">
     <p class="sr-only" style="position:absolute;left:-9999px">Analyzing, please wait…</p>
-    <div class="meta" style="margin-top:34px"><span class="sk" style="width:210px;height:10px"></span><span class="sk" style="width:110px;height:10px"></span></div>
-    <div class="head"><div style="flex:1"><span class="sk" style="width:min(380px,80%);height:32px"></span><span class="sk" style="width:min(260px,60%);height:12px;margin-top:12px"></span></div><span class="sk" style="width:96px;height:14px;margin-top:8px"></span></div>
-    <div class="card" style="margin-top:22px;padding:20px 22px;border-radius:14px"><span class="sk" style="width:55%;height:16px"></span><span class="sk" style="width:90%;height:11px"></span><span class="sk" style="width:70%;height:11px"></span></div>
+    <div class="card hero-skel">
+      <span class="sk" style="width:96px;height:96px;border-radius:50%"></span>
+      <div style="flex:1;display:grid;gap:10px">
+        <span class="sk" style="width:90px;height:18px;border-radius:99px"></span>
+        <span class="sk" style="width:min(340px,80%);height:24px"></span>
+        <span class="sk" style="width:90%;height:11px"></span>
+      </div>
+    </div>
     <div class="columns">
-      <div>
-        <span class="sk" style="width:230px;height:20px"></span><span class="sk" style="width:60%;height:10px;margin:10px 0 16px"></span>
-        <div class="stack">
-          <div class="card"><span class="sk" style="width:170px;height:12px"></span><span class="sk" style="width:120px;height:14px"></span><span class="sk" style="width:85%;height:10px"></span></div>
-          <div class="card"><span class="sk" style="width:150px;height:12px"></span><span class="sk" style="width:140px;height:14px"></span><span class="sk" style="width:80%;height:10px"></span></div>
-          <div class="card"><span class="sk" style="width:180px;height:12px"></span><span class="sk" style="width:110px;height:14px"></span><span class="sk" style="width:75%;height:10px"></span></div>
-        </div>
+      <div class="stack">
+        <div class="card"><span class="sk" style="width:170px;height:12px"></span><span class="sk" style="width:85%;height:10px"></span><span class="sk" style="width:70%;height:10px"></span></div>
+        <div class="card"><span class="sk" style="width:150px;height:12px"></span><span class="sk" style="width:80%;height:10px"></span></div>
       </div>
       <div class="side">
-        <span class="sk" style="width:150px;height:20px"></span>
         <div class="card"><span class="sk" style="width:60%;height:12px"></span><span class="sk" style="width:80%;height:11px"></span><span class="sk" style="width:70%;height:11px"></span></div>
-        <div class="card"><span class="sk" style="width:50%;height:12px"></span><span class="sk" style="width:95%;height:11px"></span><span class="sk" style="width:85%;height:11px"></span><span class="sk" style="width:90%;height:11px"></span></div>
         <span class="sk" style="width:100%;height:40px;border-radius:10px"></span>
       </div>
     </div>
@@ -58,16 +56,30 @@
   <!-- Report -->
   <main id="report" hidden>
     <div class="meta"><span id="eyebrow"></span><time id="date"></time></div>
-    <div class="head">
-      <div><h1 id="title"></h1><p id="url" class="url mono" hidden></p></div>
-      <span id="badge-slot"></span>
-    </div>
-    <section class="notice"><h2 id="notice-title"></h2><p id="notice-text"></p></section>
+
+    <section id="hero" class="hero card" aria-labelledby="notice-title">
+      <div id="gauge" class="gauge" role="img"></div>
+      <div class="hero-body">
+        <span id="badge-slot"></span>
+        <h2 id="notice-title"></h2>
+        <p id="notice-text"></p>
+        <div id="chips" class="chips"></div>
+      </div>
+    </section>
+
+    <section class="subject">
+      <p class="label">Checked</p>
+      <h1 id="title"></h1>
+      <div id="url-wrap" class="url-wrap" hidden>
+        <p id="url" class="url mono clamp"></p>
+        <button id="url-toggle" class="link-btn" type="button" hidden>Show full address</button>
+      </div>
+    </section>
 
     <div class="columns">
       <section>
         <h2 class="section-title">Why we're flagging this</h2>
-        <p class="hint" id="hint">Exact page text below. Explanations are interpretations, not verified threat intelligence.</p>
+        <p class="hint" id="hint"></p>
         <div id="findings" class="stack"></div>
         <div id="url-card" class="card" style="margin-top:12px" hidden>
           <p class="label">URL structure · factual observations</p>
@@ -78,15 +90,18 @@
 
       <aside class="side">
         <h2 class="section-title">Before you act</h2>
-        <div id="domain-card" class="card domain" hidden></div>
         <div class="card actions"><h3>What should you do?</h3><ol id="actions"></ol></div>
-        <button id="copy" class="btn primary">Copy report</button>
-        <button id="flag" class="btn">Report incorrect result</button>
+        <div id="domain-card" class="card domain" hidden></div>
+        <div id="scores-card" class="card scores" hidden>
+          <p class="label">Score breakdown</p>
+          <div id="scores"></div>
+        </div>
         <p class="fine"><span data-icon="info" data-size="13"></span><span id="disclaimer"></span></p>
       </aside>
     </div>
   </main>
 </div>
+
 <script type="module" src="results.js"></script>
 </body>
 </html>

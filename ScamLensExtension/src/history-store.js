@@ -1,4 +1,4 @@
-import { HISTORY_URL, REQUEST_TIMEOUT_MS, NGROK_BYPASS_HEADERS } from "./config.js";
+import { REQUEST_TIMEOUT_MS } from "./config.js";
 import { ApiError, getEndpoint } from "./api.js";
 import { getAccessToken, getUser } from "./auth.js";
 import { normalize } from "./normalize.js";
@@ -16,12 +16,14 @@ export async function currentMode() {
 }
 
 function historyBase(endpoint) {
-  if (HISTORY_URL) return HISTORY_URL.replace(/\/+$/, "");
   const u = new URL(endpoint);
   u.search = "";
   u.hash = "";
+  if (!/\/scans\/analyze\/?$/.test(u.pathname)) {
+    throw new ApiError("The configured API endpoint doesn't support scan history.", "config");
+  }
   u.pathname = u.pathname.replace(/\/analyze\/?$/, "");
-  return u.toString();
+  return u.toString().replace(/\/+$/, "");
 }
 
 /* ── Local (device) history ─────────────────────────────────────────────── */
@@ -67,7 +69,6 @@ async function authed(url, init = {}, signal) {
       credentials: "omit",
       headers: {
         Accept: "application/json",
-        ...NGROK_BYPASS_HEADERS,
         ...(init.body ? { "Content-Type": "application/json" } : {}),
         Authorization: `Bearer ${t}`,
       },
@@ -76,6 +77,10 @@ async function authed(url, init = {}, signal) {
     try {
       return await go(t);
     } catch {
+      if (signal?.aborted)
+        throw new ApiError("History request cancelled.", "cancelled");
+      if (timeout.aborted)
+        throw new ApiError("The history request took too long. Check your connection and try again.", "timeout");
       throw new ApiError(
         "Could not reach the ScamLens service. Check your connection and try again.",
         "network",
@@ -116,7 +121,7 @@ async function authed(url, init = {}, signal) {
 }
 
 // Server item → UI item. Items that carry only summary fields get full:false and are fetched on open.
-function fromServer(raw) {
+function fromServer(raw, full = false) {
   const { result: inner, ...outer } = raw && typeof raw === "object" ? raw : {};
   const merged = {
     ...outer,
@@ -146,7 +151,7 @@ function fromServer(raw) {
   return {
     ...r,
     id: String(outer.id ?? outer.report_id ?? r.reportId ?? ""),
-    full: Boolean(inner || outer.findings),
+    full,
   };
 }
 
@@ -162,6 +167,7 @@ export async function list({ cursor = null, signal } = {}) {
         ...e.result,
         id: e.id,
         full: true,
+        historySource: "local",
       })),
     };
   }
@@ -193,19 +199,41 @@ export async function list({ cursor = null, signal } = {}) {
       (!Array.isArray(json) && Number.isFinite(total) && page * pageSize < total
         ? String(page + 1)
         : null),
-    items: rows.map(fromServer),
+    items: rows.map((row) => ({
+      ...fromServer(row),
+      historySource: "cloud",
+    })),
   };
 }
 
 
+async function getLocalReport(item) {
+  const entry = (await readLocal()).find((saved) => saved.id === item.id);
+  if (!entry?.result || typeof entry.result !== "object") {
+    throw new ApiError("That saved report is no longer available on this device.", "not-found");
+  }
+  return { ...entry.result, id: entry.id, full: true };
+}
+
 export async function getReport(item) {
-  if (item.full) return item;
+  if (item.historySource === "local") 
+    return getLocalReport(item);
+
   const m = await currentMode();
-  if (m.mode !== "cloud") return item;
+
+  if ((item.historySource || m.mode) === "local")
+     return getLocalReport(item);
+  
+  if (m.mode !== "cloud")
+    throw new ApiError("Sign in again to open this account report.", "auth");
+  
+  if (!item.id)
+    throw new ApiError("This history item is missing its scan ID.", "parse");
+  
   const json = await (
     await authed(`${m.base}/${encodeURIComponent(item.id)}`)
   ).json();
-  return { ...fromServer(json), id: item.id, full: true };
+  return json;
 }
 
 export async function removeItem(item) {

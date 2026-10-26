@@ -151,9 +151,13 @@ async function updateNudge() {
 async function openReport(it, btn) {
   btn.disabled = true;
   try {
-    const result = await store.getReport(it);
+    const result = await store.getReport(it);   // raw or normalised, both work now
+    const target = result.target ?? result.source_url ?? "";
     await chrome.storage.session.set({
-      latestScan: { payload: { kind: result.kind, url: result.target, title: result.title, text: "" }, result },
+      latestScan: {
+        payload: { kind: result.kind ?? result.source_type, url: target, title: result.title ?? result.source_title, text: "" },
+        result,
+      },
     });
     location.href = "results.html";
   } catch (e) {

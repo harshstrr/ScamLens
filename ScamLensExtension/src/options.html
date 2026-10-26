@@ -7,6 +7,9 @@
   <link rel="stylesheet" href="theme.css">
   <link rel="stylesheet" href="options.css">
 </head>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 13c0 5-3.5 7.5-7.66 8.95a1 1 0 0 1-.67-.01C7.5 20.5 4 18 4 13V6a1 1 0 0 1 1-1c2 0 4.5-1.2 6.24-2.72a1.17 1.17 0 0 1 1.52 0C14.51 3.81 17 5 19 5a1 1 0 0 1 1 1z"/><path d="m9 12 2 2 4-4"/></symbol>
+  </svg>
 <body>
 <div class="wrap">
   <header><a class="brand" href="index.html"><span data-icon="shield-check" data-size="22"></span>ScamLens</a></header>
@@ -28,7 +31,12 @@
     <label for="theme">Theme</label>
     <select id="theme"><option value="">Follow system</option><option value="light">Light</option><option value="dark">Dark</option></select>
   </section>
-
+    <footer class="site-footer">
+  <div class="wrap foot">
+    <a class="brand" href="#top"><svg class="ic text-black" width="20" height="20" ><use href="#shield"/></svg>ScamLens</a>
+    <p>ScamLens provides assessments to help you decide, not proof of fraud or safety. <span id="y">Copyright 2026</span></p>
+  </div>
+</footer>
 </div>
 <script type="module" src="options.js"></script>
 </body>

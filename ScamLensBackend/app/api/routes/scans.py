@@ -1,6 +1,6 @@
 import json
 from uuid import uuid4
-from fastapi import APIRouter, Depends, HTTPException, Query, status
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import func, select, delete
 from sqlalchemy.orm import Session
 from app.api.deps import current_user, optional_user
@@ -116,14 +116,8 @@ def list_scans(
 def delete_all_scan(db: Session = Depends(get_db), user: Account = Depends(current_user)):
     stmt = delete(ScanRecord).where(ScanRecord.user_id == user.id)
     result = db.execute(stmt)
-    
-    if result.rowcount == 0:
-        raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND, 
-            detail="No scan records found to delete"
-        )
     db.commit()
-    
+
     return {"status": "deleted", "count": result.rowcount}
 
 @router.get("/{scan_id}", response_model=ScanResult)

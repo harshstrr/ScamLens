@@ -1,6 +1,6 @@
 // Google sign-in for the ScamLens API in a Manifest V3 extension.
 // signIn() must run in the background worker because the popup closes during OAuth.
-import { GOOGLE_CLIENT_ID, GOOGLE_SIGN_IN, TOKEN_REFRESH_URL, REQUEST_TIMEOUT_MS, NGROK_BYPASS_HEADERS } from "./config.js";
+import { GOOGLE_CLIENT_ID, GOOGLE_SIGN_IN, TOKEN_REFRESH_URL, REQUEST_TIMEOUT_MS } from "./config.js";
 
 export class AuthError extends Error {
   constructor(message, kind = "error") { super(message); this.kind = kind; }
@@ -41,7 +41,7 @@ async function postJson(url, body, action) {
   try {
     const res = await fetch(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json", Accept: "application/json", ...NGROK_BYPASS_HEADERS },
+      headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(body),
       signal: controller.signal,
       credentials: "omit",
