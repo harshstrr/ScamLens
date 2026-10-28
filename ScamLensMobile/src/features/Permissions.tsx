@@ -1,5 +1,14 @@
 import React, { useState } from "react";
-import { View, Text, ScrollView, Pressable, Switch, useColorScheme } from "react-native";
+import {
+  Alert,
+  Linking,
+  View,
+  Text,
+  ScrollView,
+  Pressable,
+  Switch,
+  useColorScheme,
+} from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import {
   ArrowLeft,
@@ -15,6 +24,18 @@ export default function PermissionsScreen() {
   const router = useRouter();
   const isDark = useColorScheme() === "dark";
   const [notifications, setNotifications] = useState(false);
+  const openAppSettings = async () => {
+    try {
+      await Linking.openSettings();
+    } catch (error: unknown) {
+      Alert.alert(
+        "Could not open settings",
+        error instanceof Error
+          ? error.message
+          : "Open your device settings to manage ScamLens permissions.",
+      );
+    }
+  };
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#111113]" edges={["top"]}>
@@ -45,7 +66,11 @@ export default function PermissionsScreen() {
 
           {/* Screen Capture Card Box */}
           <View className="border border-[#E5E5EA] rounded-[24px] p-4 mb-6 dark:border-[#3A3A3C]">
-            <Pressable className="flex-row items-center active:opacity-70 mb-3">
+            <Pressable
+              onPress={openAppSettings}
+              accessibilityRole="button"
+              className="flex-row items-center active:opacity-70 mb-3"
+            >
               <View className="mr-3.5">
                 <Cast size={20} color={isDark ? "#F5F5F7" : "#1C1C1E"} strokeWidth={1.8} />
               </View>
@@ -121,9 +146,13 @@ export default function PermissionsScreen() {
           </View>
 
           {/* Open Android Permissions */}
-          <Pressable className="w-full h-12 border border-[#E5E5EA] rounded-2xl items-center justify-center mb-5 active:bg-[#F2F2F7] dark:border-[#3A3A3C] dark:active:bg-[#2C2C2E]">
+          <Pressable
+            onPress={openAppSettings}
+            accessibilityRole="button"
+            className="w-full h-12 border border-[#E5E5EA] rounded-2xl items-center justify-center mb-5 active:bg-[#F2F2F7] dark:border-[#3A3A3C] dark:active:bg-[#2C2C2E]"
+          >
             <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
-              Open Android permission settings
+              Open app permission settings
             </Text>
           </Pressable>
 

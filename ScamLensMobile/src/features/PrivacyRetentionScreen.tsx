@@ -1,22 +1,21 @@
-import React, { useEffect, useState } from "react";
-import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  Switch,
-  Platform,
-  Alert,
-  useColorScheme,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
-import { ArrowLeft, Lock, FileText, ChevronRight } from "lucide-react-native";
-import { useRouter } from "expo-router";
 import {
   getHistoryPreferences,
   saveHistoryPreferences,
   type RetentionDays,
 } from "@/services/scan-history-storage";
+import { useRouter } from "expo-router";
+import { ArrowLeft, ChevronRight, FileText, Lock } from "lucide-react-native";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Pressable,
+  ScrollView,
+  Switch,
+  Text,
+  useColorScheme,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 type RetentionOption = "7 days" | "30 days" | "Never";
 const RETENTION_OPTIONS: RetentionOption[] = ["7 days", "30 days", "Never"];
@@ -84,7 +83,6 @@ export default function PrivacyRetentionScreen() {
 
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#111113]">
-
       {/* Header */}
       <View className="flex-row items-center px-5 py-3">
         <Pressable
@@ -92,7 +90,11 @@ export default function PrivacyRetentionScreen() {
           hitSlop={12}
           className="p-1 -ml-1 active:opacity-60"
         >
-          <ArrowLeft size={22} color={isDark ? "#F5F5F7" : "#111827"} strokeWidth={2} />
+          <ArrowLeft
+            size={22}
+            color={isDark ? "#F5F5F7" : "#111827"}
+            strokeWidth={2}
+          />
         </Pressable>
         <Text className="text-[17px] font-bold text-[#111827] ml-4 dark:text-[#F5F5F7]">
           Privacy & retention
@@ -111,10 +113,15 @@ export default function PrivacyRetentionScreen() {
 
           {/* Subtext with lock icon */}
           <View className="flex-row items-start gap-2 mb-6">
-            <Lock size={14} color={isDark ? "#A1A1AA" : "#8E8E93"} strokeWidth={2} className="mt-0.5" />
+            <Lock
+              size={14}
+              color={isDark ? "#A1A1AA" : "#8E8E93"}
+              strokeWidth={2}
+              className="mt-0.5"
+            />
             <Text className="flex-1 text-[13px] leading-5 text-[#8E8E93] dark:text-[#A1A1AA]">
-              Only submitted content is analyzed. ScamLens does not silently read
-              other apps or your clipboard.
+              Only submitted content is analyzed. ScamLens does not silently
+              read other apps or your clipboard.
             </Text>
           </View>
 
@@ -126,15 +133,18 @@ export default function PrivacyRetentionScreen() {
               </Text>
               <Text className="text-[12px] leading-4 text-[#8E8E93] mt-1 dark:text-[#A1A1AA]">
                 {saveHistory
-                  ? "On · Store reports locally on this device. Turn off to keep no future history."
-                  : "Off · No scan reports will be saved on this device."}
+                  ? "On · Save new reports on this device and to your account when signed in."
+                  : "Off · New reports will not be saved locally or to your account."}
               </Text>
             </View>
             <Switch
               value={saveHistory}
               onValueChange={handleSaveHistoryChange}
-              trackColor={{ false: isDark ? "#3A3A3C" : "#E5E5EA", true: isDark ? "#A1A1AA" : "#1C1C1E" }}
-              thumbColor={isDark ? "#111113" : "#FFFFFF"}
+              trackColor={{
+                false: isDark ? "#3A3A3C" : "#E5E5EA",
+                true: isDark ? "#A1A1AA" : "#E5E5EA",
+              }}
+              thumbColor={isDark ? "#FFFFFF" : "#3A3A3C"}
             />
           </View>
 
@@ -148,15 +158,12 @@ export default function PrivacyRetentionScreen() {
               return (
                 <Pressable
                   key={opt}
-                  onPress={() => handleRetentionChange(opt)}
-                  // NativeWind Fix: Split completely into separate static conditional strings
+                  onPress={() => void handleRetentionChange(opt)}
                   className={
                     active
-                      ? "flex-1 py-2.5 rounded-xl items-center justify-center bg-white shadow-sm elevation-1 dark:bg-[#3A3A3C]"
+                      ? "flex-1 py-2.5 rounded-xl items-center justify-center bg-white dark:bg-[#3A3A3C]"
                       : "flex-1 py-2.5 rounded-xl items-center justify-center"
                   }
-                  // Android elevation fallback style since tailwind shadow properties can drop out on Android
-                  style={active && Platform.OS === 'android' ? { elevation: 1 } : null}
                 >
                   <Text
                     className={
@@ -172,16 +179,25 @@ export default function PrivacyRetentionScreen() {
             })}
           </View>
           <Text className="text-[12px] leading-4 text-[#8E8E93] mb-6 dark:text-[#A1A1AA]">
-            Retention applies to local history, not analysis processing. “Never”
-            keeps scans until you delete them.
+            Local scans older than the selected period are removed the next time
+            history is checked, and immediately when you choose a shorter
+            period. This setting does not delete existing scans saved to your
+            account.
           </Text>
 
           <View className="h-[1px] bg-[#E5E5EA] mb-4 dark:bg-[#3A3A3C]" />
 
           {/* Processing Link */}
-          <Pressable className="flex-row items-center py-3 mb-6 active:opacity-70">
+          <Pressable
+            onPress={() => router.push("/privacy-policy")}
+            className="flex-row items-center py-3 mb-6 active:opacity-70"
+          >
             <View className="mr-3.5">
-              <FileText size={20} color={isDark ? "#F5F5F7" : "#1C1C1E"} strokeWidth={1.8} />
+              <FileText
+                size={20}
+                color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                strokeWidth={1.8}
+              />
             </View>
             <View className="flex-1">
               <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
@@ -191,7 +207,11 @@ export default function PrivacyRetentionScreen() {
                 Read how content is handled before scanning.
               </Text>
             </View>
-            <ChevronRight size={18} color={isDark ? "#71717A" : "#C7C7CC"} strokeWidth={2} />
+            <ChevronRight
+              size={18}
+              color={isDark ? "#71717A" : "#C7C7CC"}
+              strokeWidth={2}
+            />
           </Pressable>
 
           {/* Action Buttons */}

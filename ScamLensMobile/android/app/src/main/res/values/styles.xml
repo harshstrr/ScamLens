@@ -12,12 +12,16 @@
     <item name="android:windowSplashScreenBehavior">icon_preferred</item>
   </style>
 
-  <!-- Missing theme required by QuickScanActivity -->
+  
+  
   <style name="Theme.QuickScan" parent="Theme.AppCompat.DayNight.NoActionBar">
-    <!-- Since this handles quick scan features, we make the background translucent/clear -->
-    <item name="android:windowBackground">@android:color/transparent</item>
-    <item name="android:windowIsTranslucent">true</item>
-    <item name="android:windowContentOverlay">@null</item>
-    <item name="android:windowNoTitle">true</item>
+      <item name="android:windowBackground">@android:color/transparent</item>
+      <item name="android:colorBackgroundCacheHint">@null</item>
+      <item name="android:windowIsTranslucent">true</item>
+      <item name="android:windowNoTitle">true</item>
+      <item name="android:windowContentOverlay">@null</item>
+      <item name="android:windowActionModeOverlay">true</item>
+      <item name="android:windowAnimationStyle">@null</item>
   </style>
+
 </resources>

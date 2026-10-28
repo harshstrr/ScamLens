@@ -29,6 +29,11 @@ class MyModule : Module() {
             SecureCredentialStore(requireContext()).clear()
             true
         }
+
+        AsyncFunction("setScanHistoryEnabled") { enabled: Boolean ->
+            ScanHistoryPreferenceStore(requireContext()).setEnabled(enabled)
+            true
+        }
     }
 
     private fun requireContext() =

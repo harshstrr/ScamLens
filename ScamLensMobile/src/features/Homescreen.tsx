@@ -1,6 +1,7 @@
 import { analyzeScan, listScans } from "@/services/api-service";
 import type { ScanItem, ScanResult } from "@/services/api-types";
 import {
+  getHistoryPreferences,
   getLocalScans,
   saveLocalScan,
   type LocalScan,
@@ -11,9 +12,13 @@ import {
   AlertCircle,
   AlertTriangle,
   Camera,
+  Check,
   CheckCircle2,
   History,
+  Info,
   Shield,
+  ShieldAlert,
+  ShieldCheck,
   Upload,
 } from "lucide-react-native";
 import { useCallback, useState } from "react";
@@ -38,11 +43,56 @@ interface RecentScan {
   riskLevel: string;
 }
 
+const RESULT_LEGEND = [
+  {
+    label: "Likely scam",
+    description: "Several strong warning signs.",
+    Icon: ShieldAlert,
+    light: "#C62828",
+    dark: "#FF6B6B",
+  },
+  {
+    label: "High risk",
+    description: "Treat as dangerous until verified.",
+    Icon: AlertTriangle,
+    light: "#C62828",
+    dark: "#FF6B6B",
+  },
+  {
+    label: "Medium risk",
+    description: "Warning signs that warrant caution.",
+    Icon: AlertTriangle,
+    light: "#D97706",
+    dark: "#FBA94C",
+  },
+  {
+    label: "Low risk",
+    description: "Only limited warning signs.",
+    Icon: Check,
+    light: "#15803D",
+    dark: "#4ADE80",
+  },
+  {
+    label: "No threat found",
+    description: "Nothing suspicious in what was checked.",
+    Icon: ShieldCheck,
+    light: "#15803D",
+    dark: "#4ADE80",
+  },
+  {
+    label: "Unclear",
+    description: "Not enough information for a verdict.",
+    Icon: Info,
+    light: "#555555",
+    dark: "#A1A1AA",
+  },
+];
+
 const getRiskLabel = (riskLevel: string): string =>
   riskLevel === "safe" ? "Safe" : `${riskLevel} risk`;
 
 const toRecentScan = (scan: ScanItem | LocalScan): RecentScan => ({
-  id: "local_id" in scan ? scan.local_id : scan.id,
+  id: scan.id,
   title:
     scan.source_title ||
     scan.source_url ||
@@ -112,24 +162,23 @@ export default function Homescreen() {
     }
     setIsAnalyzing(true);
     try {
+      const historyPreferences = await getHistoryPreferences();
       const result: ScanResult = await analyzeScan({
         text,
         source_type: isUrl ? "website" : "message",
         source_url: isUrl ? text : null,
         source_title: isUrl ? text.slice(0, 512) : null,
-        save_to_history: Boolean(token),
-        save_content: Boolean(token),
+        save_to_history: Boolean(token) && historyPreferences.enabled,
+        save_content: Boolean(token) && historyPreferences.enabled,
       });
 
-      if (!token) {
-        try {
-          await saveLocalScan(result);
-        } catch (error: unknown) {
-          Alert.alert(
-            "Analysis complete, but history was not saved",
-            error instanceof Error ? error.message : "Please try again.",
-          );
-        }
+      try {
+        await saveLocalScan(result);
+      } catch (error: unknown) {
+        Alert.alert(
+          "Analysis complete, but history was not saved",
+          error instanceof Error ? error.message : "Please try again.",
+        );
       }
       setInputText("");
       Alert.alert(
@@ -185,7 +234,6 @@ export default function Homescreen() {
           </Text>
         </View>
 
-        {/* Core Analysis Container Box */}
         <View className="bg-[#FAFAFC] border border-[#F2F2F7] rounded-[24px] p-5 mb-8 dark:bg-[#1C1C1E] dark:border-[#3A3A3C]">
           <Text className="text-lg font-bold text-[#1C1C1E] mb-4 dark:text-[#F5F5F7]">
             Check before you trust.
@@ -251,6 +299,44 @@ export default function Homescreen() {
               </Text>
             </Pressable>
           </View>
+        </View>
+
+        {/* Possible Results Legend */}
+        <View className="mb-8 mx-1">
+          <Text className="text-[11px] font-medium tracking-widest text-[#6B6B70] mb-2 dark:text-[#A1A1AA]">
+            POSSIBLE RESULTS
+          </Text>
+
+          {RESULT_LEGEND.map(
+            ({ label, description, Icon, light, dark }, index) => {
+              const color = isDark ? dark : light;
+              return (
+                <View
+                  key={label}
+                  className={`flex-row items-center justify-between py-3.5 ${
+                    index > 0
+                      ? "border-t border-[#E5E5EA] dark:border-[#3A3A3C]"
+                      : ""
+                  }`}
+                >
+                  <View className="flex-row items-center gap-2">
+                    <Icon size={15} color={color} strokeWidth={2} />
+                    <Text className="text-[13.5px] font-bold" style={{ color }}>
+                      {label}
+                    </Text>
+                  </View>
+                  <Text className="flex-1 text-right text-[11.7px] text-[#6B6B70] ml-3 dark:text-[#A1A1AA]">
+                    {description}
+                  </Text>
+                </View>
+              );
+            },
+          )}
+
+          <Text className="text-[13px] leading-5 text-[#3A3A3C] mt-4 dark:text-[#D4D4D8]">
+            “No threat found” is never a guarantee of safety, and “Unclear”
+            never means safe or dangerous on its own.
+          </Text>
         </View>
 
         {/* Recent Scans Section */}

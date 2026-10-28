@@ -542,7 +542,7 @@ internal class ResultOverlay(
         rec.addView(text(verdict.recommendation, 14f, palette.text))
         content.addView(rec, LinearLayout.LayoutParams(-1, -2))
 
-        addActions(showReport = true)
+        addActions(showReport = true, canViewReport = verdict.canViewReport)
     }
 
     private fun reasonRow(reason: String, dotColor: Int): View {
@@ -565,19 +565,31 @@ internal class ResultOverlay(
 
     // ───────────────────────── Actions ─────────────────────────
 
-    private fun addActions(showReport: Boolean) {
+    private fun addActions(showReport: Boolean, canViewReport: Boolean = false) {
         val row = actions ?: return
         row.removeAllViews()
 
         if (showReport) {
-            row.addView(
-                styledButton(
+            val reportButton = styledButton(
                     "View full report",
                     palette.primaryBg,
                     palette.primaryFg
                 ).apply {
-                    setOnClickListener { currentVerdict?.let(onViewReport) }
-                },
+                    if (canViewReport) {
+                        setOnClickListener { currentVerdict?.let(onViewReport) }
+                    } else {
+                        isEnabled = false
+                        alpha = 0.45f
+                        val lock = context.getDrawable(android.R.drawable.ic_lock_lock)
+                            ?.mutate()
+                        lock?.setBounds(0, 0, dp(16), dp(16))
+                        lock?.setTint(palette.primaryFg)
+                        setCompoundDrawables(lock, null, null, null)
+                        compoundDrawablePadding = dp(8)
+                    }
+                }
+            row.addView(
+                reportButton,
                 LinearLayout.LayoutParams(0, dp(52), 1f).apply {
                     marginEnd = dp(10)
                 }

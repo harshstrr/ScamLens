@@ -1,7 +1,10 @@
 import { analyzeScan } from "@/services/api-service";
 import type { ScanResult } from "@/services/api-types";
 import { getStoredToken } from "@/services/auth-service";
-import { saveLocalScan } from "@/services/scan-history-storage";
+import {
+  getHistoryPreferences,
+  saveLocalScan,
+} from "@/services/scan-history-storage";
 import TextRecognition from "@react-native-ml-kit/text-recognition";
 import * as ImagePicker from "expo-image-picker";
 import { router, useLocalSearchParams } from "expo-router";
@@ -96,29 +99,28 @@ export default function ImageScanScreen() {
       setStatus("analyzing");
       const token = getStoredToken();
       try {
+        const historyPreferences = await getHistoryPreferences();
         const scanResult = await analyzeScan({
           text: content,
           source_type: "image_ocr",
           source_title: title.slice(0, 512),
-          save_to_history: Boolean(token),
-          save_content: Boolean(token),
+          save_to_history: Boolean(token) && historyPreferences.enabled,
+          save_content: Boolean(token) && historyPreferences.enabled,
         });
 
         console.log(scanResult);
-        setResult(scanResult);
-        setStatus("complete");
-
-        if (!token) {
-          try {
-            await saveLocalScan(scanResult);
-          } catch (error: unknown) {
-            setHistoryWarning(
-              error instanceof Error
-                ? `Scan finished, but it could not be saved locally: ${error.message}`
-                : "Scan finished, but it could not be saved locally.",
-            );
-          }
+        let reportResult = scanResult;
+        try {
+          reportResult = (await saveLocalScan(scanResult)) ?? scanResult;
+        } catch (error: unknown) {
+          setHistoryWarning(
+            error instanceof Error
+              ? `Scan finished, but it could not be saved locally: ${error.message}`
+              : "Scan finished, but it could not be saved locally.",
+          );
         }
+        setResult(reportResult);
+        setStatus("complete");
       } catch (error: unknown) {
         setErrorMessage(describeError(error));
         setStatus("error");

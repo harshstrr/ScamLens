@@ -1,6 +1,5 @@
 import { analyze } from "./api.js";
 import { recordScan } from "./history-store.js";
-import { analyzeLocally } from "./analyzer.js";
 import { normalize } from "./normalize.js";
 import { initTheme } from "./theme.js";
 import { hydrateIcons, icon } from "./icons.js";
@@ -181,7 +180,7 @@ function render(raw) {
 async function run(forceLocal = false) {
   show("loading");
   try {
-    const result = normalizeReport(forceLocal ? analyzeLocally(payload) : await analyze(payload));
+    const result = normalizeReport(await analyze(payload));
     await chrome.storage.session.set({ latestScan: { payload, result } });
     await recordScan(result);
     render(result);

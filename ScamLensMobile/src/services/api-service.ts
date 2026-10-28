@@ -4,7 +4,6 @@ import type {
   AnalyzeRequest,
   AuthResponse,
   ListScansParams,
-  ScanItem,
   ScanPage,
   ScanResult,
 } from "./api-types";
@@ -68,8 +67,8 @@ export const listScans = async (
   return data;
 };
 
-export const getScan = async (scanId: string): Promise<ScanItem> => {
-  const { data } = await api.get<ScanItem>(
+export const getScan = async (scanId: string): Promise<ScanResult> => {
+  const { data } = await api.get<ScanResult>(
     `/scans/${encodeURIComponent(scanId)}`,
   );
   return data;

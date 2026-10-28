@@ -4,6 +4,7 @@ package com.harsh.ScamLens.quickscan
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
+import expo.modules.mymodule.ScanHistoryPreferenceStore
 import java.net.HttpURLConnection
 import java.net.URL
 
@@ -14,7 +15,8 @@ data class ScanVerdict(
     val recommendation: String,
     val scanId: String? = null,
     val riskScore: Int? = null,
-    val verdict: String? = null
+    val verdict: String? = null,
+    val canViewReport: Boolean = false
 )
 
 internal object ScanAnalysis {
@@ -47,6 +49,8 @@ internal object ScanAnalysis {
             )
         }
 
+        val saveToHistory = ScanHistoryPreferenceStore(context).isEnabled()
+
         // Refresh first because the access token may have expired.
         val refreshed = try {
             refreshCredentials(context, credentials.secretKey)
@@ -60,8 +64,8 @@ internal object ScanAnalysis {
         return callAnalysisApi(
             text = text.take(40000),
             accessToken = refreshed.first,
-            saveToHistory = true,
-            saveToContent = true
+            saveToHistory = saveToHistory,
+            saveToContent = saveToHistory
         )
     }
 
@@ -219,7 +223,11 @@ internal object ScanAnalysis {
                     null
                 },
                 verdict = response.optString("verdict")
-                    .takeIf { it.isNotBlank() }
+                    .takeIf { it.isNotBlank() },
+                canViewReport = saveToHistory &&
+                    !accessToken.isNullOrBlank() &&
+                    response.optString("id").isNotBlank() &&
+                    response.optString("id") != "null"
             )
         } finally {
             connection.disconnect()

@@ -56,6 +56,7 @@ const FILTER_TABS: { key: FilterType; label: string }[] = [
 
 const mapScan = (
   scan: LocalScan | import("@/services/api-types").ScanItem,
+  isRemote: boolean,
 ): ScanItem => {
   const riskLevel = scan.risk_level.toLowerCase();
   const normalizedRisk: RiskLevel =
@@ -67,8 +68,8 @@ const mapScan = (
   const sourceType = scan.source_type.toLowerCase();
 
   return {
-    id: "local_id" in scan ? scan.local_id : scan.id,
-    isRemote: !("local_id" in scan),
+    id: scan.id,
+    isRemote,
     title:
       scan.source_title ||
       scan.source_url ||
@@ -106,10 +107,10 @@ export default function ScanHistoryScreen() {
   const fetchScans = useCallback(async (): Promise<ScanItem[]> => {
     if (token) {
       const page = await listScans({ page: 1, page_size: 100 });
-      return page.items.map(mapScan);
+      return page.items.map((scan) => mapScan(scan, true));
     }
     const localScans = await getLocalScans();
-    return localScans.map(mapScan);
+    return localScans.map((scan) => mapScan(scan, false));
   }, [token]);
 
   useEffect(() => {

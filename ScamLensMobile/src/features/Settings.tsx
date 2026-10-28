@@ -1,28 +1,37 @@
-import React, { useEffect, useState } from "react";
 import {
-  View,
-  Text,
-  ScrollView,
-  Pressable,
-  Alert,
-  useColorScheme,
-} from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
+  getCurrentAccount,
+  logout,
+  signInWithGoogle,
+} from "@/services/api-service";
+import type { Account } from "@/services/api-types";
+import { saveAuthResponse } from "@/services/auth-service";
+import { useAuthStore } from "@/utils/sessionStorage";
+import { GoogleSignin } from "@react-native-google-signin/google-signin";
+import { useRouter } from "expo-router";
 import {
   ArrowLeft,
-  Lock,
-  Sliders,
+  ChevronRight,
   Database,
+  FileText,
+  Lock,
+  LogOut,
+  ShieldCheck,
+  Sliders,
   Trash2,
   User,
-  ShieldCheck,
-  FileText,
-  ChevronRight,
 } from "lucide-react-native";
-import { useRouter } from "expo-router";
-import { getCurrentAccount, logout } from "@/services/api-service";
-import type { Account } from "@/services/api-types";
-import { useAuthStore } from "@/utils/sessionStorage";
+import { useEffect, useState } from "react";
+import {
+  Alert,
+  Modal,
+  Pressable,
+  ScrollView,
+  Text,
+  TouchableWithoutFeedback,
+  useColorScheme,
+  View,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
   const router = useRouter();
@@ -30,6 +39,44 @@ export default function SettingsScreen() {
   const token = useAuthStore((state) => state.token);
   const storedAccount = useAuthStore((state) => state.account);
   const [account, setAccount] = useState<Account | null>(storedAccount);
+  const [isSigningIn, setIsSigningIn] = useState(false);
+  const [showSignOut, setShowSignOut] = useState<boolean>(false);
+
+  useEffect(() => {
+    GoogleSignin.configure({
+      webClientId:
+        "704781607192-hjpi53ujt8q1k2oppu7hcqcaaftu7ri3.apps.googleusercontent.com",
+    });
+  }, []);
+
+  const handleGoogleSignIn = async () => {
+    if (isSigningIn) return;
+
+    try {
+      setIsSigningIn(true);
+      await GoogleSignin.hasPlayServices({
+        showPlayServicesUpdateDialog: true,
+      });
+
+      const response = await GoogleSignin.signIn();
+      if (response.type !== "success") return;
+
+      const idToken = response.data.idToken;
+      if (!idToken) {
+        throw new Error("Google sign-in did not return an identity token.");
+      }
+
+      const authResponse = await signInWithGoogle(idToken);
+      await saveAuthResponse(authResponse);
+    } catch (error: unknown) {
+      Alert.alert(
+        "Sign-in failed",
+        error instanceof Error ? error.message : "Please try again.",
+      );
+    } finally {
+      setIsSigningIn(false);
+    }
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -52,30 +99,8 @@ export default function SettingsScreen() {
     };
   }, [token]);
 
-  const confirmSignOut = () => {
-    Alert.alert("Sign out?", "You can continue scanning as a guest.", [
-      { text: "Cancel", style: "cancel" },
-      {
-        text: "Sign out",
-        style: "destructive",
-        onPress: async () => {
-          try {
-            await logout();
-            setAccount(null);
-          } catch (error: unknown) {
-            Alert.alert(
-              "Could not sign out",
-              error instanceof Error ? error.message : "Please try again.",
-            );
-          }
-        },
-      },
-    ]);
-  };
-
   return (
     <SafeAreaView className="flex-1 bg-white dark:bg-[#111113]" edges={["top"]}>
-
       {/* Header */}
       <View className="flex-row items-center px-5 py-3">
         <Pressable
@@ -83,9 +108,15 @@ export default function SettingsScreen() {
           hitSlop={12}
           className="p-1 -ml-1 active:opacity-60"
         >
-          <ArrowLeft size={22} color={isDark ? "#F5F5F7" : "#111827"} strokeWidth={2} />
+          <ArrowLeft
+            size={22}
+            color={isDark ? "#F5F5F7" : "#111827"}
+            strokeWidth={2}
+          />
         </Pressable>
-        <Text className="text-[17px] font-bold text-[#111827] ml-4 dark:text-[#F5F5F7]">Settings</Text>
+        <Text className="text-[17px] font-bold text-[#111827] ml-4 dark:text-[#F5F5F7]">
+          Settings
+        </Text>
       </View>
 
       <ScrollView
@@ -105,17 +136,25 @@ export default function SettingsScreen() {
               className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
             >
               <View className="mr-3.5">
-                <Lock size={20} color={isDark ? "#F5F5F7" : "#1C1C1E"} strokeWidth={1.8} />
+                <Lock
+                  size={20}
+                  color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                  strokeWidth={1.8}
+                />
               </View>
               <View className="flex-1">
                 <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
                   Privacy & retention
                 </Text>
                 <Text className="text-[13px] text-[#8E8E93] mt-0.5 dark:text-[#A1A1AA]">
-                  Local history · 30 days
+                  Local and account scan history
                 </Text>
               </View>
-              <ChevronRight size={18} color={isDark ? "#71717A" : "#C7C7CC"} strokeWidth={2} />
+              <ChevronRight
+                size={18}
+                color={isDark ? "#71717A" : "#C7C7CC"}
+                strokeWidth={2}
+              />
             </Pressable>
 
             <View className="h-[1px] bg-[#E5E5EA] ml-12 dark:bg-[#3A3A3C]" />
@@ -125,7 +164,11 @@ export default function SettingsScreen() {
               className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
             >
               <View className="mr-3.5">
-                <Sliders size={20} color={isDark ? "#F5F5F7" : "#1C1C1E"} strokeWidth={1.8} />
+                <Sliders
+                  size={20}
+                  color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                  strokeWidth={1.8}
+                />
               </View>
               <View className="flex-1">
                 <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
@@ -135,7 +178,11 @@ export default function SettingsScreen() {
                   Screen capture asks every time
                 </Text>
               </View>
-              <ChevronRight size={18} color={isDark ? "#71717A" : "#C7C7CC"} strokeWidth={2} />
+              <ChevronRight
+                size={18}
+                color={isDark ? "#71717A" : "#C7C7CC"}
+                strokeWidth={2}
+              />
             </Pressable>
           </View>
 
@@ -146,14 +193,22 @@ export default function SettingsScreen() {
               className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
             >
               <View className="mr-3.5">
-                <Database size={20} color={isDark ? "#F5F5F7" : "#1C1C1E"} strokeWidth={1.8} />
+                <Database
+                  size={20}
+                  color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                  strokeWidth={1.8}
+                />
               </View>
               <View className="flex-1">
                 <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
                   Data export & deletion
                 </Text>
               </View>
-              <ChevronRight size={18} color={isDark ? "#71717A" : "#C7C7CC"} strokeWidth={2} />
+              <ChevronRight
+                size={18}
+                color={isDark ? "#71717A" : "#C7C7CC"}
+                strokeWidth={2}
+              />
             </Pressable>
 
             <View className="h-[1px] bg-[#E5E5EA] ml-12 dark:bg-[#3A3A3C]" />
@@ -163,24 +218,39 @@ export default function SettingsScreen() {
               className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
             >
               <View className="mr-3.5">
-                <Trash2 size={20} color={isDark ? "#F5F5F7" : "#1C1C1E"} strokeWidth={1.8} />
+                <Trash2
+                  size={20}
+                  color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                  strokeWidth={1.8}
+                />
               </View>
               <View className="flex-1">
                 <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
                   Delete all scan history
                 </Text>
               </View>
-              <ChevronRight size={18} color={isDark ? "#71717A" : "#C7C7CC"} strokeWidth={2} />
+              <ChevronRight
+                size={18}
+                color={isDark ? "#71717A" : "#C7C7CC"}
+                strokeWidth={2}
+              />
             </Pressable>
 
             <View className="h-[1px] bg-[#E5E5EA] ml-12 dark:bg-[#3A3A3C]" />
 
             <Pressable
-              onPress={token ? confirmSignOut : undefined}
+              onPress={() => {
+                if (token) setShowSignOut(true);
+                else handleGoogleSignIn();
+              }}
               className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
             >
               <View className="mr-3.5">
-                <User size={20} color={isDark ? "#F5F5F7" : "#1C1C1E"} strokeWidth={1.8} />
+                <User
+                  size={20}
+                  color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                  strokeWidth={1.8}
+                />
               </View>
               <View className="flex-1">
                 <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
@@ -198,51 +268,88 @@ export default function SettingsScreen() {
                   Sign out
                 </Text>
               ) : (
-                <ChevronRight size={18} color={isDark ? "#71717A" : "#C7C7CC"} strokeWidth={2} />
+                <ChevronRight
+                  size={18}
+                  color={isDark ? "#71717A" : "#C7C7CC"}
+                  strokeWidth={2}
+                />
               )}
             </Pressable>
           </View>
 
           {/* Group 3: Legal & About Card */}
           <View className="border border-[#E5E5EA] rounded-[24px] overflow-hidden mb-10 dark:border-[#3A3A3C]">
-            <Pressable className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]">
+            <Pressable
+              onPress={() => router.push("/about")}
+              className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
+            >
               <View className="mr-3.5">
-                <ShieldCheck size={20} color={isDark ? "#F5F5F7" : "#1C1C1E"} strokeWidth={1.8} />
+                <ShieldCheck
+                  size={20}
+                  color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                  strokeWidth={1.8}
+                />
               </View>
               <View className="flex-1">
                 <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
                   About ScamLens
                 </Text>
               </View>
-              <ChevronRight size={18} color={isDark ? "#71717A" : "#C7C7CC"} strokeWidth={2} />
+              <ChevronRight
+                size={18}
+                color={isDark ? "#71717A" : "#C7C7CC"}
+                strokeWidth={2}
+              />
             </Pressable>
 
             <View className="h-[1px] bg-[#E5E5EA] ml-12 dark:bg-[#3A3A3C]" />
 
-            <Pressable className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]">
+            <Pressable
+              onPress={() => router.push("/privacy-policy")}
+              className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
+            >
               <View className="mr-3.5">
-                <FileText size={20} color={isDark ? "#F5F5F7" : "#1C1C1E"} strokeWidth={1.8} />
+                <FileText
+                  size={20}
+                  color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                  strokeWidth={1.8}
+                />
               </View>
               <View className="flex-1">
                 <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
                   Privacy policy
                 </Text>
               </View>
-              <ChevronRight size={18} color={isDark ? "#71717A" : "#C7C7CC"} strokeWidth={2} />
+              <ChevronRight
+                size={18}
+                color={isDark ? "#71717A" : "#C7C7CC"}
+                strokeWidth={2}
+              />
             </Pressable>
 
             <View className="h-[1px] bg-[#E5E5EA] ml-12 dark:bg-[#3A3A3C]" />
 
-            <Pressable className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]">
+            <Pressable
+              onPress={() => router.push("/terms")}
+              className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
+            >
               <View className="mr-3.5">
-                <FileText size={20} color={isDark ? "#F5F5F7" : "#1C1C1E"} strokeWidth={1.8} />
+                <FileText
+                  size={20}
+                  color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                  strokeWidth={1.8}
+                />
               </View>
               <View className="flex-1">
                 <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
                   Terms of use
                 </Text>
               </View>
-              <ChevronRight size={18} color={isDark ? "#71717A" : "#C7C7CC"} strokeWidth={2} />
+              <ChevronRight
+                size={18}
+                color={isDark ? "#71717A" : "#C7C7CC"}
+                strokeWidth={2}
+              />
             </Pressable>
           </View>
 
@@ -252,6 +359,64 @@ export default function SettingsScreen() {
           </Text>
         </View>
       </ScrollView>
+
+      <Modal
+        visible={showSignOut}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowSignOut(false)}
+      >
+        <TouchableWithoutFeedback onPress={() => setShowSignOut(false)}>
+          <View className="flex-1 bg-black/40 justify-center items-center px-6">
+            <TouchableWithoutFeedback>
+              <View className="w-full bg-white rounded-[28px] p-6 shadow-2xl dark:bg-[#1C1C1E]">
+                {/* Trash Icon */}
+                <View className="mb-4">
+                  <LogOut
+                    size={24}
+                    color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                    strokeWidth={1.8}
+                  />
+                </View>
+
+                {/* Title */}
+                <Text className="text-[22px] font-bold text-[#1C1C1E] mb-3 dark:text-[#F5F5F7]">
+                  Sign out of ScamLens?
+                </Text>
+
+                {/* Description */}
+                <Text className="text-[14px] leading-5 text-[#8E8E93] mb-6 dark:text-[#A1A1AA]">
+                  You'll need to sign in again to sync your scan history across
+                  devices. Scans saved on this device will stay available.
+                </Text>
+                {/* Cancel Button */}
+                <Pressable
+                  onPress={() => setShowSignOut(false)}
+                  className="w-full h-12 border border-[#E5E5EA] rounded-2xl items-center justify-center mb-3 active:bg-[#F2F2F7] dark:border-[#3A3A3C] dark:active:bg-[#2C2C2E]"
+                >
+                  <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
+                    Cancel
+                  </Text>
+                </Pressable>
+
+                {/* Confirm Clear History Button */}
+                <Pressable
+                  onPress={async () => {
+                    await logout();
+                    setAccount(null);
+                    setShowSignOut(false);
+                  }}
+                  className="w-full h-12 bg-[#1C1C1E] rounded-2xl items-center justify-center active:opacity-90 dark:bg-[#F5F5F7]"
+                >
+                  <Text className="text-[15px] font-semibold text-white dark:text-[#111113]">
+                    Sign Out
+                  </Text>
+                </Pressable>
+              </View>
+            </TouchableWithoutFeedback>
+          </View>
+        </TouchableWithoutFeedback>
+      </Modal>
     </SafeAreaView>
   );
 }

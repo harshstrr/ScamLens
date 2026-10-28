@@ -8,6 +8,7 @@ import android.app.PendingIntent
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.net.Uri
 import android.graphics.Bitmap
 import android.graphics.PixelFormat
 import android.hardware.display.DisplayManager
@@ -160,7 +161,7 @@ class QuickScanCaptureService : Service() {
                                 context = this,
                                 onDismiss = { stopEverything() },
                                 onViewReport = { verdict ->
-                                    openAppFallback(verdict)
+                                    openFullReport(verdict)
                                     stopEverything()
                                 }
                             )
@@ -228,7 +229,7 @@ class QuickScanCaptureService : Service() {
                         context = this,
                         onDismiss = { stopEverything() },
                         onViewReport = { verdict ->
-                            openAppFallback(verdict)
+                            openFullReport(verdict)
                             stopEverything()
                         }
                     )
@@ -257,6 +258,23 @@ class QuickScanCaptureService : Service() {
         launch.putExtra("quick_scan_risk", verdict.risk)
         launch.putExtra("quick_scan_summary", verdict.summary)
         startActivity(launch)
+    }
+
+    private fun openFullReport(verdict: ScanVerdict) {
+        val scanId = verdict.scanId ?: return
+        val reportUri = Uri.parse("scamlensmobile://full_report")
+            .buildUpon()
+            .appendQueryParameter("id", scanId)
+            .build()
+        val intent = Intent(Intent.ACTION_VIEW, reportUri).apply {
+            setPackage(packageName)
+            addFlags(
+                Intent.FLAG_ACTIVITY_NEW_TASK or
+                    Intent.FLAG_ACTIVITY_CLEAR_TOP or
+                    Intent.FLAG_ACTIVITY_SINGLE_TOP
+            )
+        }
+        startActivity(intent)
     }
 
     private fun runMain(action: () -> Unit) { Handler(mainLooper).post(action) }

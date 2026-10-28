@@ -1,7 +1,7 @@
 import { API_URL, FEEDBACK_URL, REQUEST_TIMEOUT_MS, MAX_TEXT_CHARS } from "./config.js";
 import { getAccessToken, getUser } from "./auth.js";
 import { normalize } from "./normalize.js";
-import { analyzeLocally } from "./analyzer.js";
+
 
 export class ApiError extends Error {
   constructor(message, kind = "error") { super(message); this.kind = kind; }
@@ -20,7 +20,6 @@ export async function getEndpoint() {
  */
 export async function analyze(payload, { signal } = {}) {
   const endpoint = await getEndpoint();
-  if (!endpoint) return analyzeLocally(payload);
 
   const user = await getUser();
   let token = null;
@@ -34,11 +33,7 @@ export async function analyze(payload, { signal } = {}) {
   }
 
   const pageText = String(payload.text || (payload.kind === "url" ? payload.url : "") || "");
-  const linkText = (payload.links || []).slice(0, 60)
-    .map((link) => [link.text, link.url].filter(Boolean).join(" "))
-    .filter(Boolean)
-    .join("\n");
-  const scanText = [pageText, linkText].filter(Boolean).join("\n").slice(0, MAX_TEXT_CHARS);
+  const scanText = pageText.slice(0, MAX_TEXT_CHARS); // on-screen text only; no link harvesting
   if (!scanText.trim()) throw new ApiError("There is no text or link to analyze.", "input");
 
   const body = {

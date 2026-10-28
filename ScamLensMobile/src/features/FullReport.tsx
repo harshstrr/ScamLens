@@ -1,21 +1,22 @@
 import { getScan } from "@/services/api-service";
 import type { ScanResult } from "@/services/api-types";
+import { getLocalScan } from "@/services/scan-history-storage";
 import { router, useLocalSearchParams } from "expo-router";
 import {
-    AlertTriangle,
-    ArrowLeft,
-    RotateCcw,
-    ShieldAlert,
-    ShieldCheck,
+  AlertTriangle,
+  ArrowLeft,
+  RotateCcw,
+  ShieldAlert,
+  ShieldCheck,
 } from "lucide-react-native";
 import { useCallback, useEffect, useState } from "react";
 import {
-    ActivityIndicator,
-    Pressable,
-    ScrollView,
-    Text,
-    View,
-    useColorScheme,
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  useColorScheme,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
@@ -139,32 +140,58 @@ export default function ScanReportScreen() {
   const { id } = useLocalSearchParams<{ id: string }>();
   const [scan, setScan] = useState<ScanResult | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadedId, setLoadedId] = useState<string | undefined>();
   const [error, setError] = useState("");
+  const isLoading = loading || loadedId !== id;
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (): Promise<ScanResult> => {
     if (!id) {
-      setError("Missing scan id.");
-      setLoading(false);
-      return;
+      throw new Error("Missing scan id.");
     }
-    setLoading(true);
-    setError("");
-    try {
-      const data = (await getScan(id)) as any;
-      console.log(data);
-      setScan(data);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Could not load the report.");
-    } finally {
-      setLoading(false);
-    }
+    return (await getLocalScan(id)) ?? (await getScan(id));
   }, [id]);
 
   useEffect(() => {
-    if (id) {
-      void load();
-    }
+    let isActive = true;
+    load()
+      .then((data) => {
+        if (isActive) {
+          setError("");
+          setScan(data);
+        }
+      })
+      .catch((e: unknown) => {
+        if (isActive) {
+          setError(
+            e instanceof Error ? e.message : "Could not load the report.",
+          );
+        }
+      })
+      .finally(() => {
+        if (isActive) {
+          setLoadedId(id);
+          setLoading(false);
+        }
+      });
+    return () => {
+      isActive = false;
+    };
   }, [id, load]);
+
+  const retryLoad = () => {
+    setLoading(true);
+    setError("");
+    setScan(null);
+    load()
+      .then(setScan)
+      .catch((e: unknown) => {
+        setError(e instanceof Error ? e.message : "Could not load the report.");
+      })
+      .finally(() => {
+        setLoadedId(id);
+        setLoading(false);
+      });
+  };
 
   const risk = scan ? getRiskStyle(scan.risk_level, isDark) : null;
   const riskLabel = scan
@@ -179,7 +206,7 @@ export default function ScanReportScreen() {
     <SafeAreaView className="flex-1 bg-white dark:bg-[#111113]">
       <View className="flex-row items-center px-5 py-3">
         <Pressable
-          onPress={() => router.back()}
+          onPress={() => router.replace("/tabs/home")}
           accessibilityRole="button"
           accessibilityLabel="Go back"
           hitSlop={12}
@@ -192,7 +219,7 @@ export default function ScanReportScreen() {
         </Text>
       </View>
 
-      {loading ? (
+      {isLoading ? (
         <View className="flex-1 items-center justify-center">
           <ActivityIndicator color={isDark ? "#F5F5F7" : "#1C1C1E"} />
           <Text className="text-sm text-[#6B7280] mt-3 dark:text-[#A1A1AA]">
@@ -207,7 +234,7 @@ export default function ScanReportScreen() {
             </Text>
           </View>
           <Pressable
-            onPress={() => void load()}
+            onPress={retryLoad}
             className="h-12 rounded-xl bg-[#1C1C1E] flex-row items-center justify-center gap-2 mt-4 dark:bg-[#F5F5F7]"
           >
             <RotateCcw size={18} color={isDark ? "#111113" : "#FFFFFF"} />
