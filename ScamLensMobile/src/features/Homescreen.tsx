@@ -7,6 +7,7 @@ import {
   type LocalScan,
 } from "@/services/scan-history-storage";
 import { useAuthStore } from "@/utils/sessionStorage";
+import { exitApp } from "@logicwind/react-native-exit-app";
 import { router, useFocusEffect } from "expo-router";
 import {
   AlertCircle,
@@ -21,13 +22,15 @@ import {
   ShieldCheck,
   Upload,
 } from "lucide-react-native";
-import { useCallback, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   Alert,
+  BackHandler,
   Pressable,
   ScrollView,
   Text,
   TextInput,
+  ToastAndroid,
   TouchableOpacity,
   useColorScheme,
   View,
@@ -112,6 +115,7 @@ const toRecentScan = (scan: ScanItem | LocalScan): RecentScan => ({
 export default function Homescreen() {
   const [inputText, setInputText] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const backPressedOnce = useRef(false);
   const [recentScans, setRecentScans] = useState<RecentScan[]>([]);
   const token = useAuthStore((state) => state.token);
   const isDark = useColorScheme() === "dark";
@@ -124,6 +128,29 @@ export default function Homescreen() {
     const scans = await getLocalScans();
     return scans.slice(0, 5).map(toRecentScan);
   }, [token]);
+
+  useFocusEffect(
+    useCallback(() => {
+      const onBackPress = () => {
+        if (backPressedOnce.current) {
+          exitApp();
+          return true;
+        }
+        backPressedOnce.current = true;
+        ToastAndroid.show("Press back again to exit", ToastAndroid.SHORT);
+        setTimeout(() => {
+          backPressedOnce.current = false;
+        }, 2000);
+        return true;
+      };
+      const subscription = BackHandler.addEventListener(
+        "hardwareBackPress",
+        onBackPress,
+      );
+
+      return () => subscription.remove();
+    }, []),
+  );
 
   useFocusEffect(
     useCallback(() => {

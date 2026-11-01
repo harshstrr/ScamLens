@@ -80,7 +80,14 @@ export default function ImageScanScreen() {
   const [result, setResult] = useState<ScanResult | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [historyWarning, setHistoryWarning] = useState("");
+  const [launching, setLaunching] = useState(false);
   const riskStyle = result ? getRiskStyle(result.risk_level, isDark) : null;
+
+  // True on the very first render of a new Home-triggered request (before the
+  // focus effect runs), or while the picker is open for that request.
+  const hasNewRequest =
+    Boolean(requestId) && requestId !== startedRequestId.current;
+  const hideContent = hasNewRequest || launching;
 
   const insets = useSafeAreaInsets();
   const analyzeText = useCallback(
@@ -112,7 +119,6 @@ export default function ImageScanScreen() {
           save_content: Boolean(token) && historyPreferences.enabled,
         });
 
-        console.log(scanResult);
         let reportResult = scanResult;
         try {
           reportResult = (await saveLocalScan(scanResult)) ?? scanResult;
@@ -178,9 +184,11 @@ export default function ImageScanScreen() {
             quality: 0.85,
           });
           if (selection.canceled) {
+            // Restore state (content stays hidden via `launching`), then leave
             setStatus(previousStatus);
             setErrorMessage(previousErrorMessage);
             if (returnOnCancel) router.back();
+            else setLaunching(false);
             return;
           }
           asset = selection.assets[0];
@@ -193,6 +201,7 @@ export default function ImageScanScreen() {
             setStatus(previousStatus);
             setErrorMessage(previousErrorMessage);
             if (returnOnCancel) router.back();
+            else setLaunching(false);
             return;
           }
           asset = selection.assets[0];
@@ -201,10 +210,17 @@ export default function ImageScanScreen() {
         if (!asset) {
           throw new Error("The selected image could not be loaded.");
         }
+
+        // Clear the old scan before showing the new one
+        setResult(null);
+        setExtractedText("");
+        setHistoryWarning("");
         setImageUri(asset.uri);
         setSourceTitle(asset.fileName || "Screenshot");
+        setLaunching(false); // reveal the screen, now with fresh data
         await recognizeAndAnalyze(asset.uri, asset.fileName || "Screenshot");
       } catch (error: unknown) {
+        setLaunching(false);
         setErrorMessage(describeError(error));
         setStatus("error");
       }
@@ -212,12 +228,19 @@ export default function ImageScanScreen() {
     [errorMessage, recognizeAndAnalyze, status],
   );
 
+  const captureImageRef = useRef(captureImage);
+  captureImageRef.current = captureImage;
+
   useFocusEffect(
     useCallback(() => {
-      if (!requestId || requestId === startedRequestId.current) return;
-      startedRequestId.current = requestId;
-      void captureImage(requestedMode, true);
-    }, [captureImage, requestId, requestedMode]),
+      if (requestId && requestId !== startedRequestId.current) {
+        startedRequestId.current = requestId;
+        setLaunching(true);
+        void captureImageRef.current(requestedMode, true);
+      }
+      // Runs only on blur or when a new request arrives
+      return () => setLaunching(false);
+    }, [requestId, requestedMode]),
   );
 
   const isBusy = ["selecting", "extracting", "analyzing"].includes(status);
@@ -248,160 +271,168 @@ export default function ImageScanScreen() {
         </Text>
       </View>
 
-      <ScrollView
-        className="flex-1"
-        contentContainerStyle={{
-          padding: 20,
-          paddingBottom: insets.bottom + 100,
-        }}
-        keyboardShouldPersistTaps="handled"
-      >
-        {imageUri ? (
-          <View className="flex items-center border-[1px] rounded-2xl border-dashed border-[#888282ad]">
-            <Image
-              source={{ uri: imageUri }}
-              accessibilityLabel="Selected image"
-              resizeMode="cover"
-              style={{
-                width: "98%",
-                height: 280,
-                backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7",
-                borderRadius: 16,
-              }}
-            />
-            <TouchableOpacity
-              activeOpacity={0.85}
-              onPress={() => setImageUri(null)}
-              className=" h-10 w-10 rounded-full absolute -top-3.5 -right-3 dark:bg-[#F2F2F7] items-center justify-center bg-[#2C2C2E]"
-            >
-              <X size={20} color={"#F2F2F7"} />
-            </TouchableOpacity>
-          </View>
-        ) : (
-          <Pressable className="h-[180px] border-1 border-[#1b1b1b] rounded-2xl bg-[#F2F2F7] items-center justify-center dark:bg-[#2C2C2E]">
-            <ImageIcon size={36} color={isDark ? "#A1A1AA" : "#8E8E93"} />
-            <Text className="text-sm text-[#8E8E93] mt-3 dark:text-[#A1A1AA]">
-              Select a screenshot or take a photo
-            </Text>
-          </Pressable>
-        )}
-
-        {isBusy ? (
-          <View className="flex-row items-center justify-center py-8">
-            <ActivityIndicator color={isDark ? "#F5F5F7" : "#1C1C1E"} />
-            <Text className="text-sm text-[#6B7280] ml-3 dark:text-[#A1A1AA]">
-              {status === "selecting"
-                ? "Opening image..."
-                : status === "extracting"
-                  ? "Extracting text..."
-                  : "Analyzing text..."}
-            </Text>
-          </View>
-        ) : null}
-
-        {errorMessage ? (
-          <View className="mt-5 rounded-2xl border border-[#FECACA] bg-[#FEF2F2] p-4 dark:border-[#7F1D1D] dark:bg-[#3F1D1D]">
-            <Text className="text-sm leading-5 text-[#991B1B] dark:text-[#FECACA]">
-              {errorMessage}
-            </Text>
-          </View>
-        ) : null}
-
-        {extractedText ? (
-          <View className="mt-6">
-            <Text className="text-base font-bold text-[#1C1C1E] mb-2 dark:text-[#F5F5F7]">
-              Extracted text
-            </Text>
-            <TextInput
-              value={extractedText}
-              onChangeText={setExtractedText}
-              multiline
-              maxLength={40000}
-              editable={!isBusy}
-              accessibilityLabel="Extracted text to analyze"
-              className="min-h-[280px] rounded-xl border border-[#E5E5EA] p-3 text-sm leading-5 text-[#1C1C1E] dark:border-[#3A3A3C] dark:text-[#F5F5F7]"
-              textAlignVertical="top"
-            />
-          </View>
-        ) : null}
-
-        {result && riskStyle ? (
-          <View className="mt-5 rounded-2xl border border-[#E5E5EA] p-4 dark:border-[#3A3A3C]">
-            <View className="flex-row items-center">
-              <riskStyle.Icon
-                size={24}
-                color={riskStyle.color}
-                strokeWidth={2.2}
+      {hideContent ? (
+        <View className="flex-1 items-center justify-center">
+          <ActivityIndicator color={isDark ? "#F5F5F7" : "#1C1C1E"} />
+        </View>
+      ) : (
+        <ScrollView
+          className="flex-1"
+          contentContainerStyle={{
+            padding: 20,
+            paddingBottom: insets.bottom + 100,
+          }}
+          keyboardShouldPersistTaps="handled"
+        >
+          {imageUri ? (
+            <View className="flex items-center border-[1px] rounded-2xl border-dashed border-[#888282ad]">
+              <Image
+                source={{ uri: imageUri }}
+                accessibilityLabel="Selected image"
+                resizeMode="cover"
+                style={{
+                  width: "98%",
+                  height: 280,
+                  backgroundColor: isDark ? "#2C2C2E" : "#F2F2F7",
+                  borderRadius: 16,
+                }}
               />
-              <Text className="text-lg font-bold ml-2 text-[#1C1C1E] dark:text-[#F5F5F7]">
-                <Text style={{ color: riskStyle.color }}>{riskLabel}</Text>
-                {" · "}
-                {result.risk_score}/100
+              <TouchableOpacity
+                activeOpacity={0.85}
+                onPress={() => setImageUri(null)}
+                className=" h-10 w-10 rounded-full absolute -top-3.5 -right-3 dark:bg-[#F2F2F7] items-center justify-center bg-[#2C2C2E]"
+              >
+                <X size={20} color={"#F2F2F7"} />
+              </TouchableOpacity>
+            </View>
+          ) : (
+            <Pressable className="h-[180px] border-1 border-[#1b1b1b] rounded-2xl bg-[#F2F2F7] items-center justify-center dark:bg-[#2C2C2E]">
+              <ImageIcon size={36} color={isDark ? "#A1A1AA" : "#8E8E93"} />
+              <Text className="text-sm text-[#8E8E93] mt-3 dark:text-[#A1A1AA]">
+                Select a screenshot or take a photo
+              </Text>
+            </Pressable>
+          )}
+
+          {isBusy ? (
+            <View className="flex-row items-center justify-center py-8">
+              <ActivityIndicator color={isDark ? "#F5F5F7" : "#1C1C1E"} />
+              <Text className="text-sm text-[#6B7280] ml-3 dark:text-[#A1A1AA]">
+                {status === "selecting"
+                  ? "Opening image..."
+                  : status === "extracting"
+                    ? "Extracting text..."
+                    : "Analyzing text..."}
               </Text>
             </View>
-            <Text className="text-sm leading-5 text-[#555555] mt-2 dark:text-[#D4D4D8]">
-              {result.summary}
-            </Text>
-            {result.recommendations?.length ? (
-              <Text className="text-sm leading-5 text-[#555555] mt-3 dark:text-[#D4D4D8]">
-                {result.recommendations.join("\n")}
+          ) : null}
+
+          {errorMessage ? (
+            <View className="mt-5 rounded-2xl border border-[#FECACA] bg-[#FEF2F2] p-4 dark:border-[#7F1D1D] dark:bg-[#3F1D1D]">
+              <Text className="text-sm leading-5 text-[#991B1B] dark:text-[#FECACA]">
+                {errorMessage}
               </Text>
-            ) : null}
-          </View>
-        ) : null}
-        {historyWarning ? (
-          <Text className="text-sm text-[#9A6700] mt-4">{historyWarning}</Text>
-        ) : null}
+            </View>
+          ) : null}
 
-        {extractedText && !isBusy ? (
-          <Pressable
-            onPress={() => {
-              if (result) {
-                router.push({
-                  pathname: "/full_report",
-                  params: {
-                    id: result.id,
-                  },
-                });
-              } else {
-                void analyzeText(extractedText);
-              }
-            }}
-            className="h-12 rounded-xl bg-[#1C1C1E] items-center justify-center mt-5 dark:bg-[#F5F5F7]"
-          >
-            <Text className="text-base font-bold text-white dark:text-[#111113]">
-              {result ? "View Full Report" : "Analyze extracted text"}
+          {extractedText ? (
+            <View className="mt-6">
+              <Text className="text-base font-bold text-[#1C1C1E] mb-2 dark:text-[#F5F5F7]">
+                Extracted text
+              </Text>
+              <TextInput
+                value={extractedText}
+                onChangeText={setExtractedText}
+                multiline
+                maxLength={40000}
+                editable={!isBusy}
+                accessibilityLabel="Extracted text to analyze"
+                className="min-h-[280px] rounded-xl border border-[#E5E5EA] p-3 text-sm leading-5 text-[#1C1C1E] dark:border-[#3A3A3C] dark:text-[#F5F5F7]"
+                textAlignVertical="top"
+              />
+            </View>
+          ) : null}
+
+          {result && riskStyle ? (
+            <View className="mt-5 rounded-2xl border border-[#E5E5EA] p-4 dark:border-[#3A3A3C]">
+              <View className="flex-row items-center">
+                <riskStyle.Icon
+                  size={24}
+                  color={riskStyle.color}
+                  strokeWidth={2.2}
+                />
+                <Text className="text-lg font-bold ml-2 text-[#1C1C1E] dark:text-[#F5F5F7]">
+                  <Text style={{ color: riskStyle.color }}>{riskLabel}</Text>
+                  {" · "}
+                  {result.risk_score}/100
+                </Text>
+              </View>
+              <Text className="text-sm leading-5 text-[#555555] mt-2 dark:text-[#D4D4D8]">
+                {result.summary}
+              </Text>
+              {result.recommendations?.length ? (
+                <Text className="text-sm leading-5 text-[#555555] mt-3 dark:text-[#D4D4D8]">
+                  {result.recommendations.join("\n")}
+                </Text>
+              ) : null}
+            </View>
+          ) : null}
+          {historyWarning ? (
+            <Text className="text-sm text-[#9A6700] mt-4">
+              {historyWarning}
             </Text>
-          </Pressable>
-        ) : null}
+          ) : null}
 
-        {!isBusy ? (
-          <View className="flex-row gap-3 mt-4">
+          {extractedText && !isBusy ? (
             <Pressable
-              onPress={() => void captureImage("media")}
-              className="flex-1 h-12 flex-row items-center justify-center gap-2 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C]"
+              onPress={() => {
+                if (result) {
+                  router.push({
+                    pathname: "/full_report",
+                    params: {
+                      id: result.id,
+                    },
+                  });
+                } else {
+                  void analyzeText(extractedText);
+                }
+              }}
+              className="h-12 rounded-xl bg-[#1C1C1E] items-center justify-center mt-5 dark:bg-[#F5F5F7]"
             >
-              <ImageIcon size={18} color={isDark ? "#F5F5F7" : "#1C1C1E"} />
-              <Text className="text-sm font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
-                Choose image
+              <Text className="text-base w-full text-center font-bold text-white dark:text-[#111113]">
+                {result ? "View Full Report" : "Analyze extracted text"}
               </Text>
             </Pressable>
-            <Pressable
-              onPress={() => void captureImage("camera")}
-              className="flex-1 h-12 flex-row items-center justify-center gap-2 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C]"
-            >
-              {captureMode === "camera" ? (
-                <RotateCcw size={18} color={isDark ? "#F5F5F7" : "#1C1C1E"} />
-              ) : (
-                <Camera size={18} color={isDark ? "#F5F5F7" : "#1C1C1E"} />
-              )}
-              <Text className="text-sm font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
-                Take photo
-              </Text>
-            </Pressable>
-          </View>
-        ) : null}
-      </ScrollView>
+          ) : null}
+
+          {!isBusy ? (
+            <View className="flex-row gap-3 mt-4">
+              <Pressable
+                onPress={() => void captureImage("media")}
+                className="flex-1 h-12 flex-row items-center justify-center gap-2 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C]"
+              >
+                <ImageIcon size={18} color={isDark ? "#F5F5F7" : "#1C1C1E"} />
+                <Text className="text-sm font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
+                  Choose image
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void captureImage("camera")}
+                className="flex-1 h-12 flex-row items-center justify-center gap-2 rounded-xl border border-[#E5E5EA] dark:border-[#3A3A3C]"
+              >
+                {captureMode === "camera" ? (
+                  <RotateCcw size={18} color={isDark ? "#F5F5F7" : "#1C1C1E"} />
+                ) : (
+                  <Camera size={18} color={isDark ? "#F5F5F7" : "#1C1C1E"} />
+                )}
+                <Text className="text-sm font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
+                  Take photo
+                </Text>
+              </Pressable>
+            </View>
+          ) : null}
+        </ScrollView>
+      )}
     </SafeAreaView>
   );
 }

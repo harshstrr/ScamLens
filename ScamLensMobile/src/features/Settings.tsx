@@ -7,7 +7,6 @@ import type { Account } from "@/services/api-types";
 import { saveAuthResponse } from "@/services/auth-service";
 import { useAuthStore } from "@/utils/sessionStorage";
 import { GoogleSignin } from "@react-native-google-signin/google-signin";
-import { useRouter } from "expo-router";
 import {
   ArrowLeft,
   ChevronRight,
@@ -21,8 +20,14 @@ import {
   User,
 } from "lucide-react-native";
 import { useEffect, useState } from "react";
+import GithubIcon from "../../assets/Github.svg";
+import GithubIconDark from "../../assets/GithubDark.svg";
+
+import Constants from "expo-constants";
+import { router } from "expo-router";
 import {
   Alert,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -34,13 +39,15 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 
 export default function SettingsScreen() {
-  const router = useRouter();
   const isDark = useColorScheme() === "dark";
   const token = useAuthStore((state) => state.token);
   const storedAccount = useAuthStore((state) => state.account);
   const [account, setAccount] = useState<Account | null>(storedAccount);
   const [isSigningIn, setIsSigningIn] = useState(false);
   const [showSignOut, setShowSignOut] = useState<boolean>(false);
+  const currentVersion = Constants.expoConfig?.version || "1.0.0";
+
+  console.log("Current version:", currentVersion);
 
   useEffect(() => {
     GoogleSignin.configure({
@@ -280,6 +287,36 @@ export default function SettingsScreen() {
           {/* Group 3: Legal & About Card */}
           <View className="border border-[#E5E5EA] rounded-[24px] overflow-hidden mb-10 dark:border-[#3A3A3C]">
             <Pressable
+              onPress={() =>
+                Linking.openURL("https://github.com/harshstrr/ScamLens")
+              }
+              className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
+            >
+              <View className="mr-3.5">
+                {isDark ? (
+                  <GithubIconDark width={20} height={20} fill="#F5F5F7" />
+                ) : (
+                  <GithubIcon width={20} height={20} fill="#1C1C1E" />
+                )}
+              </View>
+              <View className="flex-1">
+                <Text className="text-[15px] font-semibold text-[#1C1C1E] dark:text-[#F5F5F7]">
+                  Source Code{" "}
+                  <Text className="text-[13px] text-[#5f5f5f] dark:text-[#c0c0c0]">
+                    (GitHub)
+                  </Text>
+                </Text>
+              </View>
+              <ChevronRight
+                size={18}
+                color={isDark ? "#71717A" : "#C7C7CC"}
+                strokeWidth={2}
+              />
+            </Pressable>
+
+            <View className="h-[1px] bg-[#E5E5EA] ml-12 dark:bg-[#3A3A3C]" />
+
+            <Pressable
               onPress={() => router.push("/about")}
               className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
             >
@@ -355,7 +392,7 @@ export default function SettingsScreen() {
 
           {/* Version Footer */}
           <Text className="text-center text-[12px] text-[#8E8E93] pb-6 dark:text-[#A1A1AA]">
-            ScamLens 1.0.0
+            ScamLens {currentVersion}
           </Text>
         </View>
       </ScrollView>
@@ -386,8 +423,9 @@ export default function SettingsScreen() {
 
                 {/* Description */}
                 <Text className="text-[14px] leading-5 text-[#8E8E93] mb-6 dark:text-[#A1A1AA]">
-                  You&apos;ll need to sign in again to sync your scan history across
-                  devices. Scans saved on this device will stay available.
+                  You&apos;ll need to sign in again to sync your scan history
+                  across devices. Scans saved on this device will stay
+                  available.
                 </Text>
                 {/* Cancel Button */}
                 <Pressable
