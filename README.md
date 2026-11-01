@@ -28,9 +28,9 @@
 ## Download
  
 <div align="center">
-<a href="YOUR_APK_LINK"><img src="assets/btn-apk.svg" alt="Download APK" width="320"/></a>
+<a href="https://github.com/harshstrr/ScamLens/releases/download/extension/ScamLens.apk"><img src="assets/btn-apk.svg" alt="Download APK" width="320"/></a>
 &nbsp;&nbsp;
-<a href="YOUR_EXTENSION_ZIP_LINK"><img src="assets/btn-extension.svg" alt="Download Extension" width="320"/></a>
+<a href="https://github.com/harshstrr/ScamLens/releases/download/extension/ScamLens_Extension.zip"><img src="assets/btn-extension.svg" alt="Download Extension" width="320"/></a>
  
 <sub>Android 10+ recommended &nbsp;·&nbsp; Chrome / Edge 110+ (Manifest V3) &nbsp;·&nbsp; Guest scanning needs no account</sub>
  
