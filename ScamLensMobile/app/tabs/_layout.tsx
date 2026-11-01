@@ -1,7 +1,14 @@
-import React, { useState } from 'react';
-import { router, Tabs } from 'expo-router';
-import { View, Modal, Pressable, TouchableWithoutFeedback, useColorScheme } from 'react-native';
-import * as LucideIcons from 'lucide-react-native';
+import { router, Tabs } from "expo-router";
+import * as LucideIcons from "lucide-react-native";
+import { useState } from "react";
+import {
+  Modal,
+  Pressable,
+  TouchableWithoutFeedback,
+  useColorScheme,
+  View,
+} from "react-native";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 
 const SafeIcon = ({ name, color, size, strokeWidth }: any) => {
   const IconComponent = (LucideIcons as any)[name] || LucideIcons.Shield;
@@ -18,8 +25,8 @@ const NoFeedbackTabButton = (props: any) => {
         style,
         {
           flex: 1,
-          alignItems: 'center',
-          justifyContent: 'center',
+          alignItems: "center",
+          justifyContent: "center",
           opacity: 1,
         },
       ]}
@@ -29,16 +36,22 @@ const NoFeedbackTabButton = (props: any) => {
 
 export default function TabLayout() {
   const [menu, setMenu] = useState(false);
-  const isDark = useColorScheme() === 'dark';
-
+  const isDark = useColorScheme() === "dark";
+  const insets = useSafeAreaInsets();
   const handleChooseMedia = () => {
     setMenu(false);
-    router.push({ pathname: "/tabs/scan", params: { mode: "media" } });
+    router.push({
+      pathname: "/tabs/scan",
+      params: { mode: "media", requestId: String(Date.now()) },
+    });
   };
 
   const handleChooseCamera = () => {
     setMenu(false);
-    router.push({ pathname: "/tabs/scan", params: { mode: "camera" } });
+    router.push({
+      pathname: "/tabs/scan",
+      params: { mode: "camera", requestId: String(Date.now()) },
+    });
   };
 
   return (
@@ -47,35 +60,35 @@ export default function TabLayout() {
         id="main-tabs"
         screenOptions={{
           headerShown: false,
-          animation: 'none',
-          tabBarActiveTintColor: isDark ? '#F5F5F7' : '#1C1C1E',
-          tabBarInactiveTintColor: isDark ? '#71717A' : '#AEAEB2',
+          animation: "none",
+          tabBarActiveTintColor: isDark ? "#F5F5F7" : "#1C1C1E",
+          tabBarInactiveTintColor: isDark ? "#71717A" : "#AEAEB2",
           tabBarButton: (props) => <NoFeedbackTabButton {...props} />,
           tabBarItemStyle: {
             flex: 1,
-            alignItems: 'center',
-            justifyContent: 'center',
+            alignItems: "center",
+            justifyContent: "center",
           },
           tabBarIconStyle: {
-            alignSelf: 'center',
+            alignSelf: "center",
             margin: 0,
           },
           tabBarLabelStyle: {
             fontSize: 11,
-            fontWeight: '700',
+            fontWeight: "700",
             marginTop: 4,
-            alignSelf: 'center',
-            textAlign: 'center',
+            alignSelf: "center",
+            textAlign: "center",
           },
           tabBarStyle: {
-            position: 'absolute',
-            bottom: 30,
+            position: "absolute",
+            bottom: insets.bottom + 10,
             marginLeft: 44,
             marginRight: 44,
-            flexDirection: 'row',
-            alignItems: 'center',
-            justifyContent: 'space-evenly',
-            backgroundColor: isDark ? '#1C1C1E' : '#FFFFFF',
+            flexDirection: "row",
+            alignItems: "center",
+            justifyContent: "space-evenly",
+            backgroundColor: isDark ? "#1C1C1E" : "#FFFFFF",
             borderRadius: 30,
             height: 72,
             paddingBottom: 8,
@@ -88,9 +101,14 @@ export default function TabLayout() {
         <Tabs.Screen
           name="home"
           options={{
-            title: 'Analyze',
+            title: "Analyze",
             tabBarIcon: ({ color, focused }) => (
-              <SafeIcon name="Shield" color={color} size={22} strokeWidth={focused ? 2.2 : 1.8} />
+              <SafeIcon
+                name="Shield"
+                color={color}
+                size={22}
+                strokeWidth={focused ? 2.2 : 1.8}
+              />
             ),
           }}
         />
@@ -98,24 +116,24 @@ export default function TabLayout() {
         <Tabs.Screen
           name="scan"
           options={{
-            title: 'Scan',
+            title: "Scan",
             tabBarButton: () => (
               <Pressable
                 onPress={() => setMenu(true)}
                 android_ripple={null}
                 style={{
                   flex: 1,
-                  alignItems: 'center',
-                  justifyContent: 'center',
+                  alignItems: "center",
+                  justifyContent: "center",
                   opacity: 1,
                 }}
               >
-                <View className="w-20 h-20 bg-[#1C1C1E] items-center justify-center rounded-full -mt-14 shadow-lg dark:bg-[#F5F5F7]">
-                  <SafeIcon 
-                    name={menu ? "X" : "ScanLine"} 
+                <View className="w-20 h-20 bg-[#1C1C1E] items-center justify-center rounded-full -mt-16 shadow-lg dark:bg-[#F5F5F7]">
+                  <SafeIcon
+                    name={menu ? "X" : "ScanLine"}
                     color={isDark ? "#111113" : "#FFFFFF"}
-                    size={24} 
-                    strokeWidth={2.2} 
+                    size={24}
+                    strokeWidth={2.2}
                   />
                 </View>
                 {/* <Text className="text-[11px] font-bold mt-1 text-[#AEAEB2] text-center">Scan</Text> */}
@@ -127,9 +145,14 @@ export default function TabLayout() {
         <Tabs.Screen
           name="settings"
           options={{
-            title: 'Settings',
+            title: "Settings",
             tabBarIcon: ({ color, focused }) => (
-              <SafeIcon name="Settings" color={color} size={22} strokeWidth={focused ? 2.2 : 1.8} />
+              <SafeIcon
+                name="Settings"
+                color={color}
+                size={22}
+                strokeWidth={focused ? 2.2 : 1.8}
+              />
             ),
           }}
         />
@@ -144,22 +167,37 @@ export default function TabLayout() {
       >
         <TouchableWithoutFeedback onPress={() => setMenu(false)}>
           <View className="flex-1 bg-black/15 justify-end items-center pb-[7.5rem]">
-            <View className="flex-row gap-6 mb-6 items-center justify-center">
+            <View
+              style={{
+                paddingBottom: insets.bottom - 5,
+              }}
+              className="flex-row gap-6 items-center justify-center"
+            >
               <View className="items-center">
-                <Pressable 
+                <Pressable
                   onPress={handleChooseMedia}
                   className="w-[4.5rem] h-[4.5rem] bg-white rounded-full items-center justify-center shadow-lg active:opacity-80 dark:bg-[#2C2C2E]"
                 >
-                  <SafeIcon name="Image" color={isDark ? "#F5F5F7" : "#1C1C1E"} size={26} strokeWidth={2} />
+                  <SafeIcon
+                    name="Image"
+                    color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                    size={26}
+                    strokeWidth={2}
+                  />
                 </Pressable>
               </View>
 
               <View className="items-center">
-                <Pressable 
+                <Pressable
                   onPress={handleChooseCamera}
                   className="w-[4.5rem] h-[4.5rem] bg-white rounded-full items-center justify-center shadow-lg active:opacity-80 dark:bg-[#2C2C2E]"
                 >
-                  <SafeIcon name="Camera" color={isDark ? "#F5F5F7" : "#1C1C1E"} size={26} strokeWidth={2} />
+                  <SafeIcon
+                    name="Camera"
+                    color={isDark ? "#F5F5F7" : "#1C1C1E"}
+                    size={26}
+                    strokeWidth={2}
+                  />
                 </Pressable>
               </View>
             </View>

@@ -386,7 +386,7 @@ export default function SettingsScreen() {
 
                 {/* Description */}
                 <Text className="text-[14px] leading-5 text-[#8E8E93] mb-6 dark:text-[#A1A1AA]">
-                  You'll need to sign in again to sync your scan history across
+                  You&apos;ll need to sign in again to sync your scan history across
                   devices. Scans saved on this device will stay available.
                 </Text>
                 {/* Cancel Button */}

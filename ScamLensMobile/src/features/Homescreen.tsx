@@ -140,8 +140,11 @@ export default function Homescreen() {
             );
           }
         });
+
+      // This return function handles cleanups when the user navigates away
       return () => {
         isActive = false;
+        setInputText(""); // Clears the TextInput search box completely
       };
     }, [fetchRecentScans]),
   );
@@ -266,7 +269,7 @@ export default function Homescreen() {
               onPress={() =>
                 router.push({
                   pathname: "/tabs/scan",
-                  params: { mode: "media" },
+                  params: { mode: "media", requestId: String(Date.now()) },
                 })
               }
               className="flex-row items-center gap-2 py-2"
@@ -284,7 +287,7 @@ export default function Homescreen() {
               onPress={() =>
                 router.push({
                   pathname: "/tabs/scan",
-                  params: { mode: "camera" },
+                  params: { mode: "camera", requestId: String(Date.now()) },
                 })
               }
               className="flex-row items-center gap-2 py-2"

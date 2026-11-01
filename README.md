@@ -1,268 +1,245 @@
+<!--
+  REPLACE THESE 2 LINKS (search this file for them):
+    YOUR_APK_LINK            -> direct link to your .apk (e.g. GitHub Releases asset)
+    YOUR_EXTENSION_ZIP_LINK  -> direct link to your extension .zip
+  Also replace YOUR_USERNAME with your GitHub username.
+  Screenshots: add images to assets/screens/ (names listed in the Screenshots section).
+-->
+ 
 <div align="center">
-
-# 🛡️ ScamLens
-
-### Understand the risk. See the warning signs. Stay safer online.
-
-**ScamLens is a cross-platform scam-awareness project designed to help people inspect suspicious messages and webpages, understand potential warning signs, and make more informed decisions.**
-
-[![Status](https://img.shields.io/badge/status-in%20development-orange?style=flat-square)](#-project-status)
-[![Mobile](https://img.shields.io/badge/mobile-Android-3DDC84?style=flat-square&logo=android&logoColor=white)](#-project-structure)
-[![Browser](https://img.shields.io/badge/browser-Chrome%20%7C%20Edge-4285F4?style=flat-square&logo=googlechrome&logoColor=white)](#-project-structure)
-[![Backend](https://img.shields.io/badge/backend-FastAPI-009688?style=flat-square&logo=fastapi&logoColor=white)](#-technology-stack)
-
+<img src="assets/banner.svg" alt="ScamLens" width="100%"/>
+<br/>
+<br/>
+**Inspect suspicious messages and webpages, understand the warning signs, and decide with confidence.**
+ 
+<br/>
+<a href="#download"><b>Download</b></a> &nbsp;·&nbsp;
+<a href="#features"><b>Features</b></a> &nbsp;·&nbsp;
+<a href="#how-it-works"><b>How it works</b></a> &nbsp;·&nbsp;
+<a href="#getting-started"><b>Getting started</b></a> &nbsp;·&nbsp;
+<a href="#roadmap"><b>Roadmap</b></a>
+ 
 </div>
-
----
-
-## ✨ Overview
-
-Scams can arrive through fake payment requests, phishing pages, fraudulent job offers, impersonation messages, and other deceptive content. ScamLens aims to make these situations easier to assess by highlighting suspicious patterns and explaining why content may deserve closer inspection.
-
-The repository is organized into three independent components that work toward one shared product:
-
-- **Mobile** — Android app with a native Quick Scan experience.
-- **Extensions** — Chrome-first browser extension, designed to be compatible with Microsoft Edge.
-- **Backend** — Python FastAPI service intended to provide shared analysis, authentication, and cloud scan history.
-
-> **Important:** ScamLens is under active development. Current detection uses heuristic rules and is not a guarantee that content is safe or malicious. A low-risk or inconclusive result does not prove legitimacy.
-
-## 🧩 Project structure
-
-```text
-ScamLens/
-├── Mobile/          # Android app (React Native / Expo + native Android code)
-├── extensions/      # Chrome / Edge extension (Manifest V3)
-├── backend/         # Python FastAPI API and database layer
-└── README.md        # Project overview and getting started
-```
-
-
-## 🚀 Components
-
-<table>
-  <tr>
-    <td width="33%" valign="top">
-
-### 📱 Mobile
-
-Android-first experience for scanning suspicious content, including a native Quick Scan flow.
-
-**Planned / implemented foundations**
-- Native Android Quick Settings tile
-- Screen capture consent and OCR flow
-- On-device scan analysis prototype
-- Result overlay
-- Guest and Google sign-in architecture planned
-
-**Folder:** `Mobile/`
-
-    </td>
-    <td width="33%" valign="top">
-
-### 🧩 Browser extension
-
-A lightweight browser experience for scanning readable webpage content and reviewing warning signs.
-
-**Features in the prototype**
-- One-click webpage text and link scanning
-- Right-click page and selected-text actions
-- Minimal popup with loading skeleton
-- Light and dark theme support
-- Full scan report page
-
-**Folder:** `extensions/`
-
-    </td>
-    <td width="33%" valign="top">
-
-### ⚙️ Backend
-
-A shared API foundation for mobile and browser clients.
-
-**Starter foundations**
-- FastAPI and versioned endpoints
-- Google ID-token verification scaffold
-- PostgreSQL / SQLAlchemy data layer
-- Account-owned scan history endpoints
-- Initial heuristic analysis service
-
-**Folder:** `backend/`
-
-    </td>
-  </tr>
-</table>
-
-## 🏗️ Architecture
-
+<br/>
+> [!IMPORTANT]
+> ScamLens is in active development. Detection uses heuristic rules and is **not** a guarantee that content is safe or malicious. A low-risk or inconclusive result does not prove legitimacy.
+ 
+<br/>
+## Download
+ 
+<div align="center">
+<a href="YOUR_APK_LINK"><img src="assets/btn-apk.svg" alt="Download APK" width="320"/></a>
+&nbsp;&nbsp;
+<a href="YOUR_EXTENSION_ZIP_LINK"><img src="assets/btn-extension.svg" alt="Download Extension" width="320"/></a>
+ 
+<sub>Android 10+ recommended &nbsp;·&nbsp; Chrome / Edge 110+ (Manifest V3) &nbsp;·&nbsp; Guest scanning needs no account</sub>
+ 
+</div>
+<br/>
+### Install the Android app
+ 
+1. Download the **APK** using the button above.
+2. Open the file on your phone. If asked, allow **Install unknown apps** for your browser or file manager.
+3. Tap **Install**, then open ScamLens.
+4. Add the **Quick Scan** tile from your Quick Settings panel for one-tap scanning.
+### Install the browser extension
+ 
+1. Download the extension **ZIP** using the button above and **extract** it to a folder.
+2. Open `chrome://extensions` in Chrome, or `edge://extensions` in Edge.
+3. Turn on **Developer mode**.
+4. Click **Load unpacked** and select the extracted folder that contains `manifest.json`.
+5. Pin **ScamLens** to your toolbar.
+> [!TIP]
+> Keep the extracted folder in a permanent location. Moving or deleting it will disable the extension.
+ 
+<br/>
+## Overview
+ 
+Scams arrive as fake payment requests, phishing pages, fraudulent job offers, and impersonation messages. ScamLens makes them easier to assess by highlighting suspicious patterns and explaining **why** something deserves a closer look.
+ 
+One product, three independent components:
+ 
+<div align="center">
+<img src="assets/card-mobile.svg" alt="Mobile" width="270"/>
+&nbsp;
+<img src="assets/card-extension.svg" alt="Extension" width="270"/>
+&nbsp;
+<img src="assets/card-backend.svg" alt="Backend" width="270"/>
+</div>
+<br/>
+## Features
+ 
+| | |
+|---|---|
+| **Quick Scan** | Android Quick Settings tile captures the screen, reads text with on-device OCR, and shows the result in a bottom sheet. |
+| **Page scanning** | One click scans readable page text and links. Right-click any page or selected text to scan it. |
+| **Full report** | A clean report with a risk badge, evidence cards, and a "Before you act" panel. |
+| **Fast feedback** | Skeleton loading in the popup and light or dark theme support. |
+| **Scan history** | Local for guests. Cloud history and cross-device access when signed in. |
+| **Shared analysis API** | A FastAPI backend so every client can return consistent results. |
+ 
+<br/>
+## Understanding results
+ 
+<div align="center">
+<img src="assets/risk-levels.svg" alt="Risk levels: Safe, Medium, High" width="830"/>
+</div>
+<br/>
+ScamLens separates **risk** from **verification**: suspicious wording alone cannot prove a message is fake, and the absence of warning signs cannot prove it is safe.
+ 
+<br/>
+## How it works
+ 
+<div align="center">
+<img src="assets/how-it-works.svg" alt="Collect, Inspect, Analyze, Explain, Store" width="830"/>
+</div>
+<br/>
+## Screenshots
+ 
+<div align="center">
+<img src="assets/screens/mobile-quick-scan.png" width="190" alt="Quick Scan"/>
+<img src="assets/screens/mobile-result.png" width="190" alt="Result overlay"/>
+<img src="assets/screens/extension-popup.png" width="190" alt="Extension popup"/>
+<img src="assets/screens/extension-report.png" width="190" alt="Full report"/>
+</div>
+<br/>
+## Architecture
+ 
 ```mermaid
-flowchart TB
-    A[Android Mobile App] --> API[ScamLens FastAPI Backend]
+flowchart LR
+    A[Android App] --> API[FastAPI Backend]
     B[Chrome / Edge Extension] --> API
     API --> AUTH[Authentication]
-    API --> SCAN[Scan Analysis Service]
-    API --> HISTORY[Cloud Scan History]
+    API --> SCAN[Scan Analysis]
+    API --> HISTORY[Scan History]
     HISTORY --> DB[(PostgreSQL)]
     SCAN --> RULES[Heuristic Rules]
-    SCAN -. planned integration .-> INTEL[Threat Intelligence]
-    SCAN -. planned integration .-> AI[AI Analysis]
+    SCAN -. planned .-> INTEL[Threat Intelligence]
+    SCAN -. planned .-> AI[AI Analysis]
 ```
-
-The long-term goal is to use one shared analysis API so that supported clients can return consistent scan results. Guest history can remain local, while signed-in users can opt into cloud history and cross-device access.
-
-## 🔍 How scanning is intended to work
-
-1. **Collect content** — extract readable webpage text, links, message text, or OCR text.
-2. **Inspect indicators** — look for urgency, sensitive-information requests, suspicious payment language, unusual URLs, and other contextual signals.
-3. **Analyze evidence** — combine rule-based checks with additional reputation or AI services as they are integrated.
-4. **Return an explanation** — show the risk assessment, observed warning signs, limitations, and recommended next steps.
-5. **Store history according to user choice** — local history for guest usage and optional cloud history for authenticated accounts.
-
-ScamLens should distinguish between **risk** and **verification**. Suspicious wording alone cannot prove a message is fake, and the absence of warning signs cannot prove it is safe.
-
-## 🧰 Technology stack
-
-| Component | Technologies |
-|---|---|
-| Mobile | React Native, Expo, native Android Kotlin |
-| Browser extension | JavaScript, HTML, CSS, Chrome Extensions Manifest V3 |
-| Backend | Python, FastAPI, Pydantic |
-| Database layer | SQLAlchemy, PostgreSQL |
-| Migrations | Alembic |
-| Authentication | Google identity verification and ScamLens API tokens |
-| Local development | Python virtual environment, Docker Compose |
-
-Technology and implementation details may evolve as the project develops.
-
-## 📦 Getting started
-
-Clone the repository:
-
+ 
+```text
+ScamLens/
+├── Mobile/        Android app (React Native / Expo + native Kotlin)
+├── extensions/    Chrome / Edge extension (Manifest V3)
+├── backend/       Python FastAPI API and database layer
+└── assets/        Banner, buttons, and screenshots
+```
+ 
+<br/>
+## Tech stack
+ 
+<div align="center">
+![React Native](https://img.shields.io/badge/React%20Native-0A0A0A?style=for-the-badge&logo=react&logoColor=white)
+![Expo](https://img.shields.io/badge/Expo-0A0A0A?style=for-the-badge&logo=expo&logoColor=white)
+![Kotlin](https://img.shields.io/badge/Kotlin-0A0A0A?style=for-the-badge&logo=kotlin&logoColor=white)
+![JavaScript](https://img.shields.io/badge/JavaScript-0A0A0A?style=for-the-badge&logo=javascript&logoColor=white)
+![Manifest V3](https://img.shields.io/badge/Manifest%20V3-0A0A0A?style=for-the-badge&logo=googlechrome&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-0A0A0A?style=for-the-badge&logo=fastapi&logoColor=white)
+![Python](https://img.shields.io/badge/Python-0A0A0A?style=for-the-badge&logo=python&logoColor=white)
+![PostgreSQL](https://img.shields.io/badge/PostgreSQL-0A0A0A?style=for-the-badge&logo=postgresql&logoColor=white)
+![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-0A0A0A?style=for-the-badge&logo=sqlalchemy&logoColor=white)
+![Docker](https://img.shields.io/badge/Docker-0A0A0A?style=for-the-badge&logo=docker&logoColor=white)
+ 
+</div>
+<br/>
+## Getting started
+ 
 ```bash
-git clone <YOUR_GITHUB_REPOSITORY_URL>
+git clone https://github.com/YOUR_USERNAME/ScamLens.git
 cd ScamLens
 ```
-
-### 1. Mobile
-
+ 
+<details>
+<summary><b>Mobile (Android)</b></summary>
+<br/>
 ```bash
 cd Mobile
 ```
-
-Follow the component-specific README for dependency installation, Expo setup, Android native requirements, and device/emulator instructions.
-
-### 2. Browser extension
-
-```bash
-cd extensions
-```
-
-For local development in Chrome:
-
-1. Open `chrome://extensions`.
-2. Enable **Developer mode**.
-3. Select **Load unpacked**.
-4. Choose the `extensions/` directory that contains `manifest.json`.
-5. Pin ScamLens to the browser toolbar.
-
-For Microsoft Edge, open `edge://extensions` and follow the equivalent steps.
-
-A locally loaded extension is for development. Public one-click installation requires publishing through the relevant browser extension store.
-
-### 3. Backend
-
+ 
+Follow the component README for dependency installation, Expo setup, Android native requirements, and device or emulator instructions.
+ 
+</details>
+<details>
+<summary><b>Browser extension (development)</b></summary>
+<br/>
+Load the `extensions/` folder with **Load unpacked** in `chrome://extensions` or `edge://extensions` (Developer mode on). The folder must contain `manifest.json`.
+ 
+</details>
+<details>
+<summary><b>Backend</b></summary>
+<br/>
 ```bash
 cd backend
-```
-
-Use the backend's own README and `.env.example` for database configuration and setup. A typical Python workflow is:
-
-```bash
 python -m venv .venv
 ```
-
-Activate the environment:
-
+ 
 ```powershell
 # Windows PowerShell
 .\.venv\Scripts\Activate.ps1
 ```
-
+ 
 ```bash
 # macOS / Linux
 source .venv/bin/activate
 ```
-
-Then install dependencies and follow the backend's migration and launch instructions:
-
+ 
 ```bash
 pip install -r requirements.txt
 alembic upgrade head
 uvicorn app.main:app --reload
 ```
-
-When running locally, the API documentation is normally available at `http://127.0.0.1:8000/docs`.
-
-**Setup note:** The commands above assume the backend README and entry point use these paths. Follow the instructions in `backend/README.md` if they differ.
-
-## 🔐 Privacy and security principles
-
-ScamLens is being designed around these principles:
-
-- **Guest-first access:** scanning should not require account creation.
-- **Local-first guest history:** guest scan history should stay on the device unless the user explicitly chooses to export or import it.
-- **Consent-based cloud history:** signed-in cloud history should be linked to the authenticated account.
-- **Minimal retention:** avoid retaining full scanned messages or webpage contents unless needed and clearly opted into.
-- **Secure authentication:** verify identity tokens on the backend; never trust a client-supplied user ID.
-- **No embedded secrets:** never commit API keys, database passwords, OAuth client secrets, or production tokens.
-- **Explainable results:** show the signals behind a result and be clear about uncertainty.
-
-These are project goals and design principles; review the individual component implementations before assuming every item is fully enforced.
-
-## 🗺️ Roadmap
-
-- [x] Establish separate mobile, browser-extension, and backend components
-- [x] Build an Android native Quick Scan prototype
-- [x] Build the initial Chrome / Edge extension prototype
-- [x] Create the initial FastAPI backend structure
-- [ ] Run integration tests across the three components
-- [ ] Connect the extension to the shared analysis API
-- [ ] Connect Android scans to the shared analysis API
-- [ ] Complete Google sign-in and token lifecycle for supported clients
-- [ ] Implement and test guest-history import with explicit consent
-- [ ] Integrate a URL reputation provider with privacy safeguards
-- [ ] Evaluate detection against labelled legitimate and malicious examples
-- [ ] Add production logging, rate limiting, monitoring, and deployment configuration
-- [ ] Prepare Chrome Web Store and Microsoft Edge Add-ons releases
-
-## 🧪 Development guidelines
-
-- Keep each component's implementation and setup instructions in its own directory.
-- Keep shared API contracts consistent across mobile and browser clients.
-- Add tests for new analysis rules and API behavior.
-- Never treat heuristic scores as verified truth.
-- Avoid logging sensitive message or webpage contents.
-- Update this README when the architecture or setup steps change.
-
-## 🤝 Contributing
-
-Contributions, bug reports, and thoughtful feedback are welcome.
-
+ 
+API docs are normally available at `http://127.0.0.1:8000/docs`. Copy `.env.example` to `.env` and fill in your own values. Follow `backend/README.md` if your paths differ.
+ 
+</details>
+<br/>
+## Privacy and security
+ 
+- **Guest-first:** scanning does not require an account.
+- **Local-first history:** guest history stays on the device unless you export or import it.
+- **Consent-based cloud history:** linked to the authenticated account only.
+- **Minimal retention:** full scanned content is not kept unless needed and opted into.
+- **Secure auth:** tokens are verified on the backend; a client-supplied user ID is never trusted.
+- **No embedded secrets:** never commit keys, passwords, OAuth secrets, or production tokens.
+- **Explainable results:** signals are shown and uncertainty is stated plainly.
+These are project goals. Review each component before assuming every item is fully enforced.
+ 
+<br/>
+## Roadmap
+ 
+- [x] Separate mobile, extension, and backend components
+- [x] Android Quick Scan prototype
+- [x] Chrome / Edge extension with full report page
+- [x] Initial FastAPI backend
+- [ ] Integration tests across all components
+- [ ] Connect extension and Android to the shared analysis API
+- [ ] Complete Google sign-in and token lifecycle
+- [ ] Guest-history import with explicit consent
+- [ ] URL reputation provider with privacy safeguards
+- [ ] Evaluate detection on labelled legitimate and malicious examples
+- [ ] Production logging, rate limiting, monitoring, and deployment
+- [ ] Public store releases for the app and extension
+<br/>
+## Contributing
+ 
+Contributions, bug reports, and feedback are welcome.
+ 
 1. Open an issue describing the bug, feature, or improvement.
 2. Keep changes focused on one component where possible.
 3. Add or update tests and documentation.
-4. Never include secrets, personal data, or real users' private scam messages in commits or test fixtures.
-
-Contribution guidelines, licensing, and security reporting instructions can be added as the repository matures.
-
-## ⚠️ Disclaimer
-
-ScamLens is an informational tool intended to help users identify possible warning signs. It is not a bank, law-enforcement service, fact-checking authority, or guarantee of cybersecurity. Detection may produce false positives and false negatives. Independently verify sensitive requests using trusted official channels, and never share passwords, one-time passwords, or recovery codes in response to unsolicited messages.
-
----
-
+4. Never include secrets, personal data, or real users' private scam messages in commits or fixtures.
+Never treat heuristic scores as verified truth, and avoid logging sensitive message or webpage contents.
+ 
+<br/>
+## Disclaimer
+ 
+ScamLens is an informational tool that helps you spot possible warning signs. It is not a bank, law-enforcement service, fact-checking authority, or guarantee of cybersecurity. Detection may produce false positives and false negatives. Verify sensitive requests through trusted official channels, and never share passwords, one-time passwords, or recovery codes in response to unsolicited messages.
+ 
+<br/>
 <div align="center">
-
-**Built to make suspicious content easier to question — not to replace your judgment.**
-
+<img src="assets/logo.svg" width="44" alt="ScamLens"/>
+<sub>Built to make suspicious content easier to question, not to replace your judgment.</sub>
+ 
 </div>
+ 

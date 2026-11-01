@@ -1,6 +1,6 @@
-import axios from "axios";
+import { create } from "axios";
 
-export const api = axios.create({
+export const api = create({
   baseURL: "https://scamlens-76sd.onrender.com/api/v1",
   timeout: 100000,
   headers: {

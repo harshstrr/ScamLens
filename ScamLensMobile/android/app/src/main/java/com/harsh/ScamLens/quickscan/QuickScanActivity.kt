@@ -1,7 +1,7 @@
 
 package com.harsh.ScamLens.quickscan
 
-import android.app.Activity
+import androidx.activity.ComponentActivity
 import android.content.Intent
 import android.media.projection.MediaProjectionManager
 import android.net.Uri
@@ -11,7 +11,7 @@ import android.provider.Settings
 import android.widget.TextView
 import androidx.activity.result.contract.ActivityResultContracts
 
-class QuickScanActivity : Activity() {
+class QuickScanActivity : ComponentActivity() {
 
     companion object {
         private const val CAPTURE_REQUEST = 901

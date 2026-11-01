@@ -7,7 +7,7 @@ import {
 } from "@/services/scan-history-storage";
 import TextRecognition from "@react-native-ml-kit/text-recognition";
 import * as ImagePicker from "expo-image-picker";
-import { router, useLocalSearchParams } from "expo-router";
+import { router, useFocusEffect, useLocalSearchParams } from "expo-router";
 import {
   AlertTriangle,
   ArrowLeft,
@@ -18,7 +18,7 @@ import {
   ShieldCheck,
   X,
 } from "lucide-react-native";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import {
   ActivityIndicator,
   Image,
@@ -37,6 +37,7 @@ import {
 
 type CaptureMode = "camera" | "media";
 type ScanStatus =
+  | "idle"
   | "selecting"
   | "extracting"
   | "analyzing"
@@ -65,11 +66,14 @@ const describeError = (error: unknown): string => {
 
 export default function ImageScanScreen() {
   const isDark = useColorScheme() === "dark";
-  const { mode } = useLocalSearchParams<{ mode?: string }>();
-  const initialMode: CaptureMode = mode === "camera" ? "camera" : "media";
-  const started = useRef(false);
-  const [captureMode, setCaptureMode] = useState<CaptureMode>(initialMode);
-  const [status, setStatus] = useState<ScanStatus>("selecting");
+  const { mode, requestId } = useLocalSearchParams<{
+    mode?: string;
+    requestId?: string;
+  }>();
+  const requestedMode: CaptureMode = mode === "camera" ? "camera" : "media";
+  const startedRequestId = useRef<string | null>(null);
+  const [captureMode, setCaptureMode] = useState<CaptureMode>(requestedMode);
+  const [status, setStatus] = useState<ScanStatus>("idle");
   const [imageUri, setImageUri] = useState<string | null>(null);
   const [sourceTitle, setSourceTitle] = useState("Screenshot");
   const [extractedText, setExtractedText] = useState("");
@@ -133,7 +137,9 @@ export default function ImageScanScreen() {
     async (uri: string, title: string) => {
       setStatus("extracting");
       setErrorMessage("");
+      setExtractedText("");
       setResult(null);
+      setHistoryWarning("");
       try {
         const recognition = await TextRecognition.recognize(uri);
         const text = recognition.text.trim();
@@ -153,7 +159,9 @@ export default function ImageScanScreen() {
   );
 
   const captureImage = useCallback(
-    async (nextMode: CaptureMode) => {
+    async (nextMode: CaptureMode, returnOnCancel = false) => {
+      const previousStatus = status;
+      const previousErrorMessage = errorMessage;
       setCaptureMode(nextMode);
       setStatus("selecting");
       setErrorMessage("");
@@ -170,7 +178,9 @@ export default function ImageScanScreen() {
             quality: 0.85,
           });
           if (selection.canceled) {
-            router.back();
+            setStatus(previousStatus);
+            setErrorMessage(previousErrorMessage);
+            if (returnOnCancel) router.back();
             return;
           }
           asset = selection.assets[0];
@@ -180,7 +190,9 @@ export default function ImageScanScreen() {
             quality: 0.85,
           });
           if (selection.canceled) {
-            router.back();
+            setStatus(previousStatus);
+            setErrorMessage(previousErrorMessage);
+            if (returnOnCancel) router.back();
             return;
           }
           asset = selection.assets[0];
@@ -197,20 +209,18 @@ export default function ImageScanScreen() {
         setStatus("error");
       }
     },
-    [recognizeAndAnalyze],
+    [errorMessage, recognizeAndAnalyze, status],
   );
 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-      if (started.current) return;
-      started.current = true;
-      void captureImage(initialMode);
-    }, 0);
-    return () => clearTimeout(timer);
-  }, [captureImage, initialMode]);
+  useFocusEffect(
+    useCallback(() => {
+      if (!requestId || requestId === startedRequestId.current) return;
+      startedRequestId.current = requestId;
+      void captureImage(requestedMode, true);
+    }, [captureImage, requestId, requestedMode]),
+  );
 
-  const isBusy =
-    status === "selecting" || status === "extracting" || status === "analyzing";
+  const isBusy = ["selecting", "extracting", "analyzing"].includes(status);
   const riskLabel = result
     ? result.risk_level === "safe"
       ? "Safe"
