@@ -23,6 +23,7 @@ import { useEffect, useState } from "react";
 import GithubIcon from "../../assets/Github.svg";
 import GithubIconDark from "../../assets/GithubDark.svg";
 
+import { appStorage } from "@/utils/app-storage";
 import Constants from "expo-constants";
 import { router } from "expo-router";
 import {
@@ -247,8 +248,7 @@ export default function SettingsScreen() {
 
             <Pressable
               onPress={() => {
-                if (token) setShowSignOut(true);
-                else handleGoogleSignIn();
+                if (!token) handleGoogleSignIn();
               }}
               className="flex-row items-center p-4 active:bg-[#F9F9FB] dark:active:bg-[#2C2C2E]"
             >
@@ -267,20 +267,18 @@ export default function SettingsScreen() {
                   {account?.email ??
                     (token
                       ? "Loading account..."
-                      : "Not signed in. No account needed to scan.")}
+                      : "Guest Account - Signed in.")}
                 </Text>
               </View>
-              {token ? (
-                <Text className="text-[12px] font-semibold text-[#8E8E93] dark:text-[#A1A1AA]">
+
+              <Pressable
+                className="px-3 py-2 dark:bg-[#F5F5F7] bg-[#1c1c1e] rounded-xl"
+                onPress={() => setShowSignOut(true)}
+              >
+                <Text className="text-[12px] font-semibold text-[#8E8E93] dark:text-[#1c1c1e]">
                   Sign out
                 </Text>
-              ) : (
-                <ChevronRight
-                  size={18}
-                  color={isDark ? "#71717A" : "#C7C7CC"}
-                  strokeWidth={2}
-                />
-              )}
+              </Pressable>
             </Pressable>
           </View>
 
@@ -440,9 +438,11 @@ export default function SettingsScreen() {
                 {/* Confirm Clear History Button */}
                 <Pressable
                   onPress={async () => {
+                    await appStorage.setItem("guest-mode", "false");
                     await logout();
                     setAccount(null);
                     setShowSignOut(false);
+                    router.replace("/onboarding");
                   }}
                   className="w-full h-12 bg-[#1C1C1E] rounded-2xl items-center justify-center active:opacity-90 dark:bg-[#F5F5F7]"
                 >

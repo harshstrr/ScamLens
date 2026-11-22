@@ -2,8 +2,8 @@ import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import { ActivityIndicator, View } from "react-native";
 
-import OnboardingScreen from "@/features/Onboarding";
 import { restoreSecureCredentials } from "@/services/auth-service";
+import { appStorage } from "@/utils/app-storage";
 import { useAuthStore } from "@/utils/sessionStorage";
 
 export default function Index() {
@@ -15,14 +15,16 @@ export default function Index() {
 
     const checkAuth = async () => {
       try {
-        // Read the latest credentials directly from Android secure storage.
         await restoreSecureCredentials();
 
         if (!isActive) return;
 
         const restoredToken = useAuthStore.getState().token;
-        console.log(restoredToken);
-        if (restoredToken) {
+
+        const guest_mode = await appStorage.getItem("guest-mode");
+        console.log("Guest Mode:", guest_mode);
+        console.log("Restored Token:", restoredToken);
+        if (restoredToken || guest_mode === "true") {
           router.replace("/tabs/home");
           return;
         }
@@ -35,7 +37,12 @@ export default function Index() {
       }
     };
 
-    void checkAuth();
+    try {
+      void checkAuth();
+    } catch (err) {
+      console.log(err);
+      router.replace("/onboarding");
+    }
 
     return () => {
       isActive = false;
@@ -53,6 +60,4 @@ export default function Index() {
   if (token) {
     return null;
   }
-
-  return <OnboardingScreen />;
 }

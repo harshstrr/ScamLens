@@ -1,7 +1,7 @@
-import type { ScanResult } from "./api-types";
 import { appStorage } from "@/utils/app-storage";
 import { requireOptionalNativeModule } from "expo-modules-core";
 import { Platform } from "react-native";
+import type { ScanResult } from "./api-types";
 
 const SCAN_HISTORY_KEY = "scan-history";
 const GUEST_MODE_KEY = "guest-mode";
@@ -63,7 +63,13 @@ const createScanId = (): string =>
     return (character === "x" ? random : (random & 0x3) | 0x8).toString(16);
   });
 
+function guestname(): string {
+  const randomNum = Math.floor(Math.random() * 100000);
+  return `guest${randomNum}`;
+}
+
 export const startGuestSession = async (): Promise<void> => {
+  await appStorage.setItem("username" , guestname());
   await appStorage.setItem(GUEST_MODE_KEY, "true");
 };
 

@@ -88,7 +88,7 @@ export default function OnboardingScreen() {
       if (!idToken) {
         throw new Error("Google sign-in did not return an identity token.");
       }
-
+      console.log("Google ID Token:", idToken);
       const authResponse = await signInWithGoogle(idToken);
       await saveAuthResponse(authResponse);
       router.replace("/tabs/home");
